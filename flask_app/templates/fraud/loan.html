@@ -1,0 +1,66 @@
+{% extends "fraud/_layout.html" %}
+{% block title %}Loan Fraud Detection{% endblock %}
+{% block fraud_content %}
+<div class="fraud-header">
+  <div class="fraud-title">Loan Fraud Detection</div>
+  <div class="fraud-sub">BOC · Peoples Bank · Commercial Bank · Sampath · HNB</div>
+</div>
+
+<div class="input-grid">
+  <div class="input-section">
+    <div class="input-section-title">Loan Application</div>
+    <div class="form-group"><label for="loan_amount">Loan Amount (Rs.)</label><input class="form-control" id="loan_amount" type="number" value="200000" min="10000" max="10000000"></div>
+    <div class="form-group"><label for="monthly_income">Monthly Income (Rs.)</label><input class="form-control" id="monthly_income" type="number" value="80000" min="10000" max="5000000"></div>
+    <div class="form-group"><label for="credit_score">Credit Score</label><input class="form-control" id="credit_score" type="number" value="650" min="300" max="850"></div>
+    <div class="form-group"><label for="employment_years">Employment Years</label><input class="form-control" id="employment_years" type="number" value="5" min="0" max="50"></div>
+    <div class="form-group"><label for="age">Age</label><input class="form-control" id="age" type="number" value="35" min="18" max="70"></div>
+  </div>
+  <div class="input-section">
+    <div class="input-section-title">Risk Signals</div>
+    <div class="form-group"><label for="existing_loans">Existing Loans</label><input class="form-control" id="existing_loans" type="number" value="1" min="0" max="20"></div>
+    <div class="form-group"><label for="address_changes">Recent Address Change?</label><select class="form-control" id="address_changes"><option value="0">No (Safe)</option><option value="1">Yes (Warning)</option></select></div>
+    <div class="form-group"><label for="doc_inconsistency">Document Issues?</label><select class="form-control" id="doc_inconsistency"><option value="0">No (Safe)</option><option value="1">Yes (Warning)</option></select></div>
+    <div class="form-group"><label for="multiple_apps">Multiple Applications?</label><select class="form-control" id="multiple_apps"><option value="0">No (Safe)</option><option value="1">Yes (Warning)</option></select></div>
+  </div>
+</div>
+
+<button type="button" class="btn-analyze" id="analyzeBtn" onclick="analyze()">Check Application</button>
+
+<div class="result-card" id="result">
+  <div class="result-verdict" id="verdict">
+    <div class="verdict-icon" id="vIcon"></div>
+    <div class="verdict-label" id="vLabel"></div>
+    <div class="verdict-detail" id="vDetail"></div>
+  </div>
+  <div class="result-metrics">
+    <div class="result-metric"><div class="metric-val" id="mProb">—</div><div class="metric-lbl">Fraud Probability</div></div>
+    <div class="result-metric"><div class="metric-val" id="mRisk">—</div><div class="metric-lbl">Risk Level</div></div>
+    <div class="result-metric"><div class="metric-val" id="mDecision">—</div><div class="metric-lbl">Decision</div></div>
+  </div>
+  <div class="gauge-bar" style="margin-top:16px"><div class="gauge-fill" id="gauge" style="width:0%"></div></div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+async function analyze(){
+  const btn=document.getElementById('analyzeBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Checking...';
+  const p={loan_amount:+document.getElementById('loan_amount').value,monthly_income:+document.getElementById('monthly_income').value,credit_score:+document.getElementById('credit_score').value,employment_years:+document.getElementById('employment_years').value,existing_loans:+document.getElementById('existing_loans').value,age:+document.getElementById('age').value,address_changes:+document.getElementById('address_changes').value,doc_inconsistency:+document.getElementById('doc_inconsistency').value,multiple_apps:+document.getElementById('multiple_apps').value};
+  try{const res=await fetch('/fraud/loan/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});const d=await res.json();if(d.error){alert('Error: '+d.error);return;}showResult(d);}catch(e){alert('Failed: '+e);}finally{btn.disabled=false;btn.innerHTML='Check Application';}
+}
+function showResult(d){
+  const rc=document.getElementById('result');rc.classList.add('show');
+  document.getElementById('verdict').className='result-verdict '+(d.fraud?'fraud':'safe');
+  document.getElementById('vIcon').innerHTML=d.fraud?icon('alert',28,'#E24B4A'):icon('check',28,'#1D9E75');
+  document.getElementById('vLabel').className='verdict-label '+(d.fraud?'fraud-text':'safe-text');
+  document.getElementById('vLabel').textContent=d.fraud?'FRAUDULENT APPLICATION':'LEGITIMATE APPLICATION';
+  document.getElementById('vDetail').textContent='Probability: '+d.pct;
+  document.getElementById('mProb').textContent=d.pct;
+  document.getElementById('mRisk').innerHTML='<span class="risk-badge risk-'+d.risk+'">'+d.risk+'</span>';
+  document.getElementById('mDecision').textContent=d.decision;
+  const pct=Math.round(d.prob*100);const c=pct>65?'#E24B4A':pct>40?'#EF9F27':'#1D9E75';
+  const g=document.getElementById('gauge');g.style.width=pct+'%';g.style.background=`linear-gradient(90deg,#1D9E75,${c})`;
+  rc.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+</script>
+{% endblock %}

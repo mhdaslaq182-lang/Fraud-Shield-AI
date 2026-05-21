@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Fraud Detection{% endblock %} | Sri Lanka</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<nav class="navbar">
+    <a class="navbar-brand" href="/">
+        <span data-icon="shield" data-size="24" data-color="#1D9E75"></span>
+        &nbsp;FRAUD SHIELD
+        <span class="badge-sl">LK</span>
+    </a>
+
+    <!-- Desktop Nav -->
+    <ul class="navbar-nav desktop-nav">
+        <li><a href="/"><span data-icon="home" data-size="16"></span> HOME</a></li>
+        <li><a href="/about"><span data-icon="users" data-size="16"></span> ABOUT</a></li>
+        {% if current_user.is_authenticated %}
+        <li><a href="/dashboard"><span data-icon="dashboard" data-size="16"></span> DASHBOARD</a></li>
+        <li><a href="/profile"><span data-icon="user" data-size="16"></span> {{ current_user.username.upper() }}</a></li>
+        <li><a href="/logout" class="nav-logout"><span data-icon="logout" data-size="16"></span> LOGOUT</a></li>
+        {% else %}
+        <li><a href="/login"><span data-icon="login" data-size="16"></span> LOGIN</a></li>
+        <li><a href="/register" class="nav-register"><span data-icon="register" data-size="16"></span> REGISTER</a></li>
+        {% endif %}
+        <li>
+            <button type="button" class="theme-toggle" onclick="toggleTheme()" id="themeToggle">
+                <span class="theme-icon" id="themeIcon">○</span>
+                <span class="theme-label" id="themeLabel">LIGHT</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- Mobile hamburger button -->
+    <div class="mobile-nav-wrapper">
+        <button type="button" class="hamburger" onclick="toggleMenu()" id="hamburger" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </div>
+</nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+    <a href="/" onclick="toggleMenu()">
+        <span data-icon="home" data-size="18"></span> Home
+    </a>
+    <a href="/about" onclick="toggleMenu()">
+        <span data-icon="users" data-size="18"></span> About Us
+    </a>
+    {% if current_user.is_authenticated %}
+    <a href="/dashboard" onclick="toggleMenu()">
+        <span data-icon="dashboard" data-size="18"></span> Dashboard
+    </a>
+    <a href="/profile" onclick="toggleMenu()">
+        <span data-icon="user" data-size="18"></span> {{ current_user.username }}
+    </a>
+    <a href="/logout" class="nav-logout" onclick="toggleMenu()">
+        <span data-icon="logout" data-size="18"></span> Logout
+    </a>
+    {% else %}
+    <a href="/login" onclick="toggleMenu()">
+        <span data-icon="login" data-size="18"></span> Login
+    </a>
+    <a href="/register" onclick="toggleMenu()" class="mobile-register-link">
+        <span data-icon="register" data-size="18"></span> Register
+    </a>
+    {% endif %}
+    <div class="mobile-menu-divider">
+        <button type="button" onclick="toggleTheme();toggleMenu()" class="theme-toggle mobile-theme-btn">
+            <span class="theme-icon" id="themeIconMenu">○</span>
+            <span class="theme-label" id="themeLabelMenu">LIGHT MODE</span>
+        </button>
+    </div>
+</div>
+<main class="main-content">
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'info' }}">
+    <span data-icon="{{ 'alert' if category == 'error' else 'check' if category == 'success' else 'info' }}" data-size="16"></span>
+    &nbsp;{{ message }}
+    <button type="button" class="alert-close" onclick="this.parentElement.remove()" aria-label="Close">&times;</button>
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+{% block content %}{% endblock %}
+</main>
+<footer>
+    <div class="footer-container">
+
+        <!-- Related Solutions -->
+        <div class="footer-section">
+            <h2 class="section-heading">Related solutions</h2>
+            <div class="solutions-grid">
+                <div>
+                    <div class="icon-wrap icon-wrap-green">
+                        <span data-icon="cpu" data-size="26" data-color="#1D9E75"></span>
+                    </div>
+                    <h3 class="card-title">AI Automations for Banking</h3>
+                    <p class="card-desc">Build, deploy and manage powerful AI assistants and agents that automate fraud detection workflows</p>
+                    <a href="#" class="card-link">Explore Fraud Shield AI →</a>
+                </div>
+                <div>
+                    <div class="icon-wrap icon-wrap-blue">
+                        <span data-icon="money" data-size="26" data-color="#1D9E75"></span>
+                    </div>
+                    <h3 class="card-title">AI Solutions for Finance</h3>
+                    <p class="card-desc">Automate, enhance and create value with AI for Sri Lankan financial services</p>
+                    <a href="#" class="card-link">Explore financial solutions →</a>
+                </div>
+                <div>
+                    <div class="icon-wrap icon-wrap-gold">
+                        <span data-icon="users" data-size="26" data-color="#1D9E75"></span>
+                    </div>
+                    <h3 class="card-title">Financial Services Consulting</h3>
+                    <p class="card-desc">Fraud Shield AI helps Sri Lankan banks modernize fraud prevention and build resilient digital security</p>
+                    <a href="#" class="card-link">Explore consulting services →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Take the next step -->
+        <div class="footer-section">
+            <h2 class="section-heading">Take the next step</h2>
+            <p class="card-desc">Fraud Shield AI provides hybrid cloud and AI capabilities to help Sri Lankan banks transition to advanced fraud detection and achieve stronger security.</p>
+            <div class="cta-buttons">
+                <a href="/register" class="btn btn-cyber">Explore banking solutions →</a>
+                <a href="/about" class="btn btn-outline-cyber">Meet the team →</a>
+            </div>
+        </div>
+
+        <!-- Main footer links -->
+        <div class="footer-grid">
+            <div>
+                <h3 class="footer-heading">Discover</h3>
+                <ul class="footer-links">
+                    <li class="footer-link-item"><a href="/" class="footer-link">Home</a></li>
+                    <li class="footer-link-item"><a href="/dashboard" class="footer-link">Dashboard</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Industries</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Case Studies</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Financing</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Research</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="footer-heading">Connect</h3>
+                <ul class="footer-links">
+                    <li class="footer-link-item"><a href="#" class="footer-link">Business Partners</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Documentation</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Events</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Newsletters</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Support</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Community</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="footer-heading">Follow</h3>
+                <ul class="footer-links">
+                    <li class="footer-link-item"><a href="#" class="footer-link">LinkedIn</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">X (Twitter)</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Instagram</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">YouTube</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Podcasts</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="footer-heading">About</h3>
+                <ul class="footer-links">
+                    <li class="footer-link-item"><a href="/about" class="footer-link">Overview</a></li>
+                    <li class="footer-link-item"><a href="/about" class="footer-link">Team</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Careers</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Leadership</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Newsroom</a></li>
+                    <li class="footer-link-item"><a href="#" class="footer-link">Security, Privacy and Trust</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Bottom bar -->
+        <div class="footer-bottom">
+            <div>
+                <div class="footer-brand">
+                    <span data-icon="shield" data-size="20" data-color="#1D9E75"></span>
+                    &nbsp; FRAUD SHIELD AI
+                </div>
+                <div class="footer-links-row">
+                    <a href="#" class="footer-link-small">Contact Us</a>
+                    <a href="#" class="footer-link-small">Privacy</a>
+                    <a href="#" class="footer-link-small">Terms of Use</a>
+                </div>
+            </div>
+            <div>
+                <div class="footer-links-row">
+                    <a href="#" class="footer-link-small">Accessibility</a>
+                    <a href="#" class="footer-link-small">Cookie Preferences</a>
+                </div>
+                <p class="footer-members">
+                    M.M. Manasir · A.F. Asra · M.A.M. Hasheed · N.F. Nifsha · M.L.F. Naheetha · A.M. Aslaak
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+<script src="/static/js/icons.js"></script>
+
+<!-- ── Chatbot Widget ─────────────────────────────────────────────── -->
+<div id="chatWidget" style="position:fixed;bottom:24px;right:24px;z-index:9999;font-family:'Inter',sans-serif">
+
+  <!-- Toggle button -->
+  <button id="chatToggle" onclick="toggleChat()" style="
+    width:56px;height:56px;border-radius:50%;background:var(--accent);border:none;
+    cursor:pointer;box-shadow:0 4px 20px rgba(29,158,117,0.5);
+    display:flex;align-items:center;justify-content:center;
+    transition:transform 0.2s;margin-left:auto;position:relative">
+    <span id="chatToggleIcon" data-icon="brain" data-size="26" data-color="#fff"></span>
+    <span id="chatDot" style="position:absolute;top:3px;right:3px;width:12px;height:12px;
+      background:#22c47a;border-radius:50%;border:2px solid var(--card-bg)"></span>
+  </button>
+
+  <!-- Chat window -->
+  <div id="chatWindow" style="
+    display:none;flex-direction:column;
+    width:min(360px,90vw);height:480px;
+    background:var(--card-bg);border:1px solid var(--border);
+    border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.25);
+    overflow:hidden;margin-bottom:12px;
+    position:absolute;bottom:68px;right:0">
+
+    <!-- Header -->
+    <div style="background:var(--accent);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);
+        display:flex;align-items:center;justify-content:center">
+        <span data-icon="brain" data-size="20" data-color="#fff"></span>
+      </div>
+      <div style="flex:1">
+        <div style="color:#fff;font-weight:700;font-size:0.9rem;letter-spacing:0.5px">FRAUD SHIELD AI</div>
+        <div style="color:rgba(255,255,255,0.8);font-size:0.75rem;display:flex;align-items:center;gap:5px">
+          <span style="width:7px;height:7px;background:#22c47a;border-radius:50%;display:inline-block"></span>
+          Online — Ask me anything
+        </div>
+      </div>
+      <button onclick="toggleChat()" style="background:none;border:none;color:rgba(255,255,255,0.8);
+        cursor:pointer;font-size:1.3rem;line-height:1;padding:0">&times;</button>
+    </div>
+
+    <!-- Messages -->
+    <div id="chatMessages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin">
+      <div style="align-self:flex-start;max-width:85%">
+        <div class="chat-bot-bubble" style="background:rgba(29,158,117,0.08);border:1px solid var(--border);
+          border-radius:12px 12px 12px 2px;padding:10px 14px;font-size:0.85rem;line-height:1.5">
+          Hello! I'm your Fraud Shield AI Assistant.<br>Ask me about fraud detection, risk levels, modules, or how to use the system.
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div style="padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;background:var(--card-bg)">
+      <input id="chatInput" type="text" placeholder="Ask about fraud detection..."
+        onkeydown="if(event.key==='Enter')sendChat()"
+        style="flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:10px;
+          background:var(--input-bg,rgba(255,255,255,0.06));color:var(--text-primary);
+          font-size:0.85rem;outline:none">
+      <button onclick="sendChat()" id="chatSendBtn" style="
+        padding:9px 14px;background:var(--accent);border:none;border-radius:10px;
+        color:#fff;font-weight:600;cursor:pointer;font-size:0.85rem;white-space:nowrap">
+        Send
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+#chatMessages::-webkit-scrollbar { width: 4px; }
+#chatMessages::-webkit-scrollbar-track { background: transparent; }
+#chatMessages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.chat-bot-bubble { color: var(--text-primary); }
+[data-theme="dark"] .chat-bot-bubble { color: #ffffff !important; }
+#chatWindow { background: #ffffff; }
+[data-theme="dark"] #chatWindow { background: #0d1b2a !important; }
+[data-theme="dark"] #chatWindow > div:last-child { background: #0d1b2a !important; }
+[data-theme="dark"] #chatInput { background: rgba(255,255,255,0.06) !important; color: #ffffff !important; border-color: rgba(29,158,117,0.25) !important; }
+</style>
+
+<script>
+(function(){
+  let chatOpen = false;
+  let chatHistory = [];
+
+  window.toggleChat = function() {
+    chatOpen = !chatOpen;
+    const win = document.getElementById('chatWindow');
+    win.style.display = chatOpen ? 'flex' : 'none';
+    if (chatOpen) {
+      document.getElementById('chatInput').focus();
+      document.getElementById('chatDot').style.display = 'none';
+      if (window.renderIcons) renderIcons();
+    }
+  };
+
+  window.sendChat = async function() {
+    const input = document.getElementById('chatInput');
+    const msg   = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    appendMsg('user', msg);
+    chatHistory.push({role:'user', content: msg});
+
+    const btn = document.getElementById('chatSendBtn');
+    btn.disabled = true;
+    btn.textContent = '...';
+    appendTyping();
+
+    try {
+      const res  = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({message: msg, history: chatHistory})
+      });
+      const data = await res.json();
+      removeTyping();
+      const reply = data.reply || 'No response.';
+      appendMsg('bot', reply);
+      chatHistory.push({role:'assistant', content: reply});
+      if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+    } catch(e) {
+      removeTyping();
+      appendMsg('bot', 'Network error — please try again.');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Send';
+  };
+
+  function appendMsg(role, text) {
+    const c   = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.style.cssText = 'align-self:' + (role==='user' ? 'flex-end' : 'flex-start') + ';max-width:85%';
+    const bubble = document.createElement('div');
+    if (role === 'user') {
+      bubble.style.cssText = 'background:var(--accent);color:#fff;border-radius:12px 12px 2px 12px;padding:10px 14px;font-size:0.85rem;line-height:1.5;white-space:pre-wrap';
+    } else {
+      bubble.className = 'chat-bot-bubble';
+      bubble.style.cssText = 'background:rgba(29,158,117,0.08);border:1px solid var(--border);border-radius:12px 12px 12px 2px;padding:10px 14px;font-size:0.85rem;line-height:1.5;white-space:pre-wrap';
+    }
+    bubble.textContent = text;
+    div.appendChild(bubble);
+    c.appendChild(div);
+    c.scrollTop = c.scrollHeight;
+  }
+
+  function appendTyping() {
+    const c   = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.id = 'chatTyping';
+    div.style.cssText = 'align-self:flex-start';
+    div.innerHTML = '<div class="chat-bot-bubble" style="background:rgba(29,158,117,0.08);border:1px solid var(--border);border-radius:12px 12px 12px 2px;padding:10px 14px;font-size:0.85rem;opacity:0.7">Thinking...</div>';
+    c.appendChild(div);
+    c.scrollTop = c.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('chatTyping');
+    if (t) t.remove();
+  }
+})();
+</script>
+<script>
+// Theme Toggle
+function getTheme() {
+    return localStorage.getItem('theme') || 'light';
+}
+
+function applyTheme(theme) {
+    // Sync all theme icons
+    const icons = ['themeIcon','themeIconMenu'];
+    const labels = ['themeLabel','themeLabelMenu'];
+    icons.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.textContent = theme==='dark' ? '●' : '○';
+    });
+    labels.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.textContent = theme==='dark' ? 'DARK MODE' : 'LIGHT MODE';
+    });
+    document.documentElement.setAttribute('data-theme', theme);
+    const icon  = document.getElementById('themeIcon');
+    const label = document.getElementById('themeLabel');
+    if (theme === 'dark') {
+        if (icon)  icon.textContent  = '●';
+        if (label) label.textContent = 'DARK';
+    } else {
+        if (icon)  icon.textContent  = '○';
+        if (label) label.textContent = 'LIGHT';
+    }
+}
+
+function toggleMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const burger = document.getElementById('hamburger');
+    menu.classList.toggle('open');
+    burger.classList.toggle('active');
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', function(e) {
+    const menu   = document.getElementById('mobileMenu');
+    const burger = document.getElementById('hamburger');
+    if (menu && burger && !menu.contains(e.target) && !burger.contains(e.target)) {
+        menu.classList.remove('open');
+        burger.classList.remove('active');
+    }
+});
+
+function toggleTheme() {
+    const current = getTheme();
+    const next    = current === 'light' ? 'dark' : 'light';
+    localStorage.setItem('theme', next);
+    applyTheme(next);
+}
+
+// Apply saved theme on page load
+applyTheme(getTheme());
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

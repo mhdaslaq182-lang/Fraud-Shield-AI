@@ -1,0 +1,44 @@
+# Large data files (too big for GitHub)
+data/*.csv
+data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment
+.env
+.env.*
+venv/
+env/
+*.venv
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs (keep structure, not content)
+logs/*.jsonl
+alerts/*.log
+flask_app/logs/*.jsonl
+flask_app/alerts/*.log
+
+# Database (regenerated on startup)
+flask_app/instance/*.db
+
+# Face encodings (user data)
+flask_app/face_encodings/
+
+# Certificates
+flask_app/cert.pem
+flask_app/key.pem

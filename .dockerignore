@@ -1,0 +1,7 @@
+__pycache__
+*.pyc
+*.pyo
+.env
+.git
+*.log
+flask_app/fraud_users.db

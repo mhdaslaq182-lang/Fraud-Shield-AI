@@ -1,0 +1,6 @@
+amount_lkr,hour,frequency,distance_km,failed_logins,new_device,account_age,countries,velocity_24h,email_risk,balance_lkr,is_weekend,fraud_prob,is_fraud,txn_type,timestamp
+21007.42,17,2,1.8,0,0,2058,1,2,0.09,611704.09,1,0.0,0,✅ Legitimate,12:48:53
+999900.0,15,19,220.0,0,0,43,5,19,0.15,7929243.83,1,1.0,1,💰 Money Laundering,12:48:53
+21450.37,13,3,49.6,0,1,1872,1,1,0.04,2308322.05,0,0.0,0,✅ Legitimate,12:48:54
+4346.19,13,2,7.9,0,0,909,1,2,0.15,134626.62,1,0.0,0,✅ Legitimate,12:48:54
+3934.53,8,3,9.7,0,0,642,1,0,0.15,895216.67,1,0.0,0,✅ Legitimate,12:48:55

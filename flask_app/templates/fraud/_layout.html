@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/fraud.css">
+{% endblock %}
+{% block content %}
+<div class="fraud-layout">
+
+  <!-- Sidebar -->
+  <aside class="fraud-sidebar">
+    <div class="fraud-sidebar-title">Detection Modules</div>
+    <nav class="fraud-nav">
+      <a href="/fraud/banking"    class="fraud-nav-item {% if active=='banking'    %}active{% endif %}"><span class="fraud-nav-icon" data-icon="card"     data-size="15"></span> Banking Fraud</a>
+      <a href="/fraud/ecommerce"  class="fraud-nav-item {% if active=='ecommerce'  %}active{% endif %}"><span class="fraud-nav-icon" data-icon="globe"    data-size="15"></span> E-Commerce</a>
+      <a href="/fraud/mobile"     class="fraud-nav-item {% if active=='mobile'     %}active{% endif %}"><span class="fraud-nav-icon" data-icon="phone"    data-size="15"></span> Mobile Payment</a>
+      <a href="/fraud/insurance"  class="fraud-nav-item {% if active=='insurance'  %}active{% endif %}"><span class="fraud-nav-icon" data-icon="heart"    data-size="15"></span> Insurance</a>
+      <a href="/fraud/loan"       class="fraud-nav-item {% if active=='loan'       %}active{% endif %}"><span class="fraud-nav-icon" data-icon="money"    data-size="15"></span> Loan Fraud</a>
+      <a href="/fraud/phishing"   class="fraud-nav-item {% if active=='phishing'   %}active{% endif %}"><span class="fraud-nav-icon" data-icon="mail"     data-size="15"></span> Phishing</a>
+      <div style="border-top:1px solid var(--border);margin:10px 0"></div>
+      <a href="/fraud/monitor"    class="fraud-nav-item {% if active=='monitor'    %}active{% endif %}"><span class="fraud-nav-icon" data-icon="eye"      data-size="15"></span> Live Monitor</a>
+      <a href="/fraud/pipeline"   class="fraud-nav-item {% if active=='pipeline'   %}active{% endif %}"><span class="fraud-nav-icon" data-icon="cpu"      data-size="15"></span> Pipeline</a>
+      <a href="/fraud/upload"     class="fraud-nav-item {% if active=='upload'     %}active{% endif %}"><span class="fraud-nav-icon" data-icon="database" data-size="15"></span> Data Upload</a>
+      <div style="border-top:1px solid var(--border);margin:10px 0"></div>
+      <a href="/fraud/analytics"  class="fraud-nav-item {% if active=='analytics'  %}active{% endif %}"><span class="fraud-nav-icon" data-icon="chart"    data-size="15"></span> Analytics</a>
+      <a href="/fraud/shap"       class="fraud-nav-item {% if active=='shap'       %}active{% endif %}"><span class="fraud-nav-icon" data-icon="brain"    data-size="15"></span> SHAP Explainer</a>
+      <a href="/fraud/api-tester" class="fraud-nav-item {% if active=='api_tester' %}active{% endif %}"><span class="fraud-nav-icon" data-icon="network"  data-size="15"></span> API Tester</a>
+      <a href="/fraud/alerts"     class="fraud-nav-item {% if active=='alerts'     %}active{% endif %}"><span class="fraud-nav-icon" data-icon="bell"     data-size="15"></span> Alert Log</a>
+    </nav>
+    <div style="margin-top:20px;padding:14px;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.15);border-radius:12px">
+      <div style="font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:10px;font-weight:600">System Status</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="width:7px;height:7px;border-radius:50%;background:#1D9E75;box-shadow:0 0 5px #1D9E75"></div><span style="font-size:0.8rem;color:var(--text-secondary)">Models Active</span></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="width:7px;height:7px;border-radius:50%;background:#1D9E75;box-shadow:0 0 5px #1D9E75"></div><span style="font-size:0.8rem;color:var(--text-secondary)">API Online</span></div>
+      <div style="display:flex;align-items:center;gap:8px"><div style="width:7px;height:7px;border-radius:50%;background:#EF9F27;box-shadow:0 0 5px #EF9F27"></div><span style="font-size:0.8rem;color:var(--text-secondary)">SMS Pending</span></div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <section class="fraud-main">
+    {% block fraud_content %}{% endblock %}
+  </section>
+
+</div>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block extra_css %}{{ super() }}
+<style>
+@keyframes pulse-ring {
+    0%,100%{transform:scale(1);opacity:1}
+    50%{transform:scale(1.04);opacity:0.6}
+}
+@keyframes scan-line {
+    0%   { transform: translateY(-100px); opacity: 1; }
+    100% { transform: translateY(100px);  opacity: 0; }
+}
+</style>
+{% endblock %}
+{% block content %}
+<div style="margin-bottom:25px;padding-bottom:20px;border-bottom:1px solid var(--border)">
+    <h1 style="font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:15px;margin:0">
+        <span data-icon="user" data-size="32" data-color="#1D9E75"></span> MY PROFILE
+    </h1>
+    <div style="color:var(--text-secondary);font-size:0.9rem;margin-top:5px">Manage your account and biometric security settings</div>
+</div>
+<div class="profile-grid">
+    <div class="glass-card" style="text-align:center;padding:35px 25px">
+        <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(244,185,66,0.1));border:2px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 15px">
+            <span data-icon="user" data-size="40" data-color="#1D9E75"></span>
+        </div>
+        <h2 style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--text-primary);font-size:1.3rem;letter-spacing:1px;margin:0 0 4px">{{ user.full_name }}</h2>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:5px">@{{ user.username }}</p>
+        <span class="role-badge" style="margin-bottom:20px;display:inline-block">{{ user.role.upper() }}</span>
+        <div style="border-top:1px solid var(--border);padding-top:20px;margin-top:10px">
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:8px">{{ user.email }}</p>
+            <p style="color:var(--text-muted);font-size:0.8rem;margin-bottom:15px">Joined: {{ user.created_at.strftime("%d %b %Y") if user.created_at else "N/A" }}</p>
+            {% if face_status %}
+            <span class="role-badge" style="color:var(--success);background:rgba(0,255,136,0.1);border-color:rgba(0,255,136,0.3)">
+                <span data-icon="check" data-size="14" data-color="#1D9E75"></span> &nbsp; FACE REGISTERED
+            </span>
+            {% else %}
+            <span class="role-badge" style="color:var(--text-muted);background:transparent">
+                <span data-icon="camera" data-size="14"></span> &nbsp; NO FACE REGISTERED
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="glass-card">
+        <div class="card-header-cyber"><span data-icon="camera" data-size="18" data-color="#1D9E75"></span> &nbsp; FACE RECOGNITION SETUP</div>
+        <div style="padding:25px">
+            {% if face_status %}
+            <div class="alert alert-success"><span data-icon="check" data-size="16" data-color="#1D9E75"></span> &nbsp; Face registered! You can use biometric login.</div>
+            {% else %}
+            <div class="alert" style="background:rgba(255,165,2,0.1);border-color:rgba(255,165,2,0.3);color:var(--warning)">
+                <span data-icon="alert" data-size="16" data-color="#1D9E75"></span> &nbsp; No face registered. Register below for biometric login.
+            </div>
+            {% endif %}
+            <!-- Face registration camera UI -->
+        <div style="position:relative;width:220px;heigz0px;margin:0 auto 16px">
+            <video id="video" autoplay muted playsinline style="width:220px;height:220px;object-fit:cover;border-radius:50%;border:3px solid var(--accent);display:block;transform:scaleX(-1)"></video>
+            <div id="regRing" style="position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(29,158,117,0.4);animation:pulse-ring 2s ease-in-out infinite;pointer-events:none"></div>
+            <div id="regScan" style="position:absolute;left:8px;right:8px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);top:50%;opacity:0;pointer-events:none;transition:opacity 0.3s"></div>
+        </div>
+        <canvas id="canvas" style="display:none"></canvas>
+
+        <div id="status" class="status-box" style="text-align:center;padding:12px 18px;border-radius:12px;border:1px solid var(--border);background:var(--card-bg);font-size:0.9rem;color:var(--text-secondary);margin-bottom:14px">
+            Camera starting...
+        </div>
+
+        <button type="button" onclick="startRegCapture()" id="regBtn" class="btn btn-cyber btn-block" style="margin-top:4px">
+            <span data-icon="camera" data-size="18"></span> &nbsp; AUTO CAPTURE &amp; REGISTER
+        </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let regStream = null;
+
+navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}})
+    .then(s => {
+        regStream = s;
+        document.getElementById('video').srcObject = s;
+        document.getElementById('status').textContent = 'Camera ready — click button or wait 5s for auto-capture';
+        document.getElementById('status').style.color = 'var(--accent)';
+        // auto-capture after 5 seconds
+        setTimeout(() => { if (regStream) doRegister(); }, 5000);
+    })
+    .catch(() => {
+        document.getElementById('status').textContent = 'Camera not found — allow camera permission.';
+        document.getElementById('status').style.color = 'var(--danger)';
+    });
+
+function startRegCapture() {
+    document.getElementById('status').textContent = 'Capturing in 3...';
+    document.getElementById('status').style.color = 'var(--warning)';
+    let c = 3;
+    const t = setInterval(() => {
+        c--;
+        if (c <= 0) { clearInterval(t); doRegister(); }
+        else { document.getElementById('status').textContent = `Capturing in ${c}...`; }
+    }, 1000);
+}
+
+function doRegister() {
+    const sb = document.getElementById('status');
+    const scan = document.getElementById('regScan');
+    sb.textContent = 'Scanning face...';
+    sb.style.color = 'var(--accent)';
+    scan.style.opacity = '1';
+    scan.style.animation = 'scan-line 1.5s linear 1';
+
+    const video  = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    canvas.width  = video.videoWidth  || 320;
+    canvas.height = video.videoHeight || 320;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+    fetch('/api/face-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageData })
+    })
+    .then(r => r.json())
+    .then(data => {
+        scan.style.opacity = '0';
+        if (data.success) {
+            sb.textContent = 'Face registered successfully!';
+            sb.style.color = 'var(--success)';
+            document.getElementById('regRing').style.borderColor = '#1D9E75';
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            sb.textContent = 'Failed: ' + data.message + ' — Try again';
+            sb.style.color = 'var(--danger)';
+            document.getElementById('regBtn').style.display = 'block';
+        }
+    })
+    .catch(() => {
+        scan.style.opacity = '0';
+        sb.textContent = 'Network error — try again';
+        sb.style.color = 'var(--danger)';
+    });
+}
+</script>
+{% endblock %}

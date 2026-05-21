@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="dash-header">
+    <div>
+        <div class="dash-title">
+            <span data-icon="cpu" data-size="28" data-color="#1D9E75"></span>
+            &nbsp; COMMAND CENTER
+        </div>
+        <div class="dash-subtitle">Welcome back, <span style="color:var(--accent)">{{ user.full_name }}</span></div>
+    </div>
+    <a href="/fraud/analytics" class="btn btn-cyber">
+        <span data-icon="chart" data-size="18"></span> &nbsp; OPEN ANALYTICS
+    </a>
+</div>
+<div class="stats-grid" style="margin-bottom:30px">
+    <div class="stat-card"><div class="stat-number">6</div><div class="stat-label">Domains</div></div>
+    <div class="stat-card"><div class="stat-number">284K</div><div class="stat-label">Real Data</div></div>
+    <div class="stat-card"><div class="stat-number">10+</div><div class="stat-label">Models</div></div>
+    <div class="stat-card"><div class="stat-number" style="color:var(--success)">100%</div><div class="stat-label">Accuracy</div></div>
+    <div class="stat-card"><div class="stat-number">89</div><div class="stat-label">SL Cities</div></div>
+    <div class="stat-card"><div class="stat-number" style="color:var(--gold)">15</div><div class="stat-label">SL Banks</div></div>
+</div>
+<div style="margin-bottom:20px">
+    <h3 style="font-family:'Orbitron',sans-serif;font-size:0.9rem;color:var(--text-secondary);letter-spacing:3px">FRAUD DETECTION MODULES</h3>
+</div>
+<div class="module-grid">
+    <a href="/fraud/banking" style="text-decoration:none">
+    <div class="module-card" style="--module-color:#1D9E75">
+        <div class="module-header">
+            <div class="module-icon"><span data-icon="card" data-size="30" data-color="#1D9E75"></span></div>
+            <div><div class="module-name">BANKING FRAUD</div><div class="module-desc">Credit Card &middot; AML &middot; Account Takeover</div></div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:100%;background:var(--accent);box-shadow:0 0 8px rgba(29,158,117,0.5)"></div></div>
+        <div class="progress-label">Accuracy: 100%</div>
+    </div></a>
+    <a href="/fraud/ecommerce" style="text-decoration:none">
+    <div class="module-card" style="--module-color:#1D9E75">
+        <div class="module-header">
+            <div class="module-icon"><span data-icon="globe" data-size="30" data-color="#1D9E75"></span></div>
+            <div><div class="module-name">E-COMMERCE FRAUD</div><div class="module-desc">Daraz &middot; Kapruka &middot; Takas.lk</div></div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:100%;background:var(--accent);box-shadow:0 0 8px rgba(29,158,117,0.5)"></div></div>
+        <div class="progress-label">Accuracy: 100%</div>
+    </div></a>
+    <a href="/fraud/mobile" style="text-decoration:none">
+    <div class="module-card" style="--module-color:#1D9E75">
+        <div class="module-header">
+            <div class="module-icon"><span data-icon="phone" data-size="30" data-color="#1D9E75"></span></div>
+            <div><div class="module-name">MOBILE PAYMENT</div><div class="module-desc">Dialog Pay &middot; genie &middot; FriMi &middot; mCash</div></div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:100%;background:var(--accent);box-shadow:0 0 8px rgba(29,158,117,0.5)"></div></div>
+        <div class="progress-label">Accuracy: 100%</div>
+    </div></a>
+    <a href="/fraud/insurance" style="text-decoration:none">
+    <div class="module-card" style="--module-color:#1D9E75">
+        <div class="module-header">
+            <div class="module-icon"><span data-icon="heart" data-size="30" data-color="#1D9E75"></span></div>
+            <div><div class="module-name">INSURANCE FRAUD</div><div class="module-desc">Ceylinco &middot; AIA Lanka &middot; Allianz</div></div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:100%;background:var(--accent);box-shadow:0 0 8px rgba(29,158,117,0.5)"></div></div>
+        <div class="progress-label">Accuracy: 100%</div>
+    </div></a>
+    <a href="/fraud/loan" style="text-decoration:none">
+    <div class="module-card" style="--module-color:#1D9E75">
+        <div class="module-header">
+            <div class="module-icon"><span data-icon="money" data-size="30" data-color="#1D9E75"></span></div>
+            <div><div class="module-name">LOAN FRAUD</div><div class="module-desc">BOC &middot; Sampath &middot; HNB &middot; Peoples</div></div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:100%;background:var(--accent);box-shadow:0 0 8px rgba(29,158,117,0.5)"></div></div>
+        <div class="progress-label">Accuracy: 100%</div>
+    </div></a>
+    <a href="/fraud/phishing" style="text-decoration:none">
+    <div class="module-card" style="--module-color:#1D9E75">
+        <div class="module-header">
+            <div class="module-icon"><span data-icon="mail" data-size="30" data-color="#1D9E75"></span></div>
+            <div><div class="module-name">PHISHING DETECTION</div><div class="module-desc">Email &middot; SMS &middot; NLP Analysis</div></div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:95%;background:var(--accent);box-shadow:0 0 8px rgba(29,158,117,0.5)"></div></div>
+        <div class="progress-label">Accuracy: 95%</div>
+    </div></a>
+</div>
+<div style="margin-bottom:20px;margin-top:10px">
+    <h3 style="font-family:'Orbitron',sans-serif;font-size:0.9rem;color:var(--text-secondary);letter-spacing:3px">QUICK ACCESS</h3>
+</div>
+<div class="feature-grid">
+    <a href="#" onclick="openStreamlit(); return false;" style="text-decoration:none">
+        <div class="feature-card" style="--feature-color:var(--accent)">
+            <div class="feature-icon-wrap"><span data-icon="chart" data-size="40" data-color="#1D9E75"></span></div>
+            <div class="feature-title">ANALYTICS DASHBOARD</div>
+            <div class="feature-desc">Open full Streamlit analytics with all charts and fraud detection tools</div>
+        </div>
+    </a>
+    <a href="/profile" style="text-decoration:none">
+        <div class="feature-card" style="--feature-color:var(--gold)">
+            <div class="feature-icon-wrap"><span data-icon="user" data-size="40" data-color="#1D9E75"></span></div>
+            <div class="feature-title">MY PROFILE</div>
+            <div class="feature-desc">Manage account settings and register face for biometric login</div>
+        </div>
+    </a>
+    <a href="/about" style="text-decoration:none">
+        <div class="feature-card" style="--feature-color:var(--success)">
+            <div class="feature-icon-wrap"><span data-icon="users" data-size="40" data-color="#1D9E75"></span></div>
+            <div class="feature-title">ABOUT TEAM</div>
+            <div class="feature-desc">Meet the CG02 Group 07 development team members</div>
+        </div>
+    </a>
+</div>
+
+{% endblock %}

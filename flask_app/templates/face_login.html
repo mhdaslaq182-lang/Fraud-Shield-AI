@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+{% block title %}Face Login{% endblock %}
+{% block extra_css %}
+{{ super() }}
+<style>
+.face-container {
+    position: relative;
+    width: min(320px, 100%);
+    aspect-ratio: 1 / 1;
+    margin: 0 auto 20px;
+}
+.face-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+    background: #000;
+    transform: scaleX(-1);
+}
+.face-ring {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    animation: pulse-ring 2s ease-in-out infinite;
+    pointer-events: none;
+}
+.face-ring-outer {
+    position: absolute;
+    inset: -16px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(29,158,117,0.3);
+    animation: pulse-ring 2s ease-in-out infinite 0.3s;
+    pointer-events: none;
+}
+.scan-line {
+    position: absolute;
+    left: 6px; right: 6px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    border-radius: 2px;
+    top: 6px;
+    animation: scan 2s linear infinite;
+    opacity: 0;
+    pointer-events: none;
+}
+.scan-line.active { opacity: 1; }
+
+@keyframes pulse-ring {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.03); opacity: 0.7; }
+}
+@keyframes scan {
+    0%   { transform: translateY(0);    opacity: 0; }
+    5%   { transform: translateY(0);    opacity: 1; }
+    95%  { transform: translateY(calc(min(320px, 100%) - 14px)); opacity: 1; }
+    100% { transform: translateY(calc(min(320px, 100%) - 14px)); opacity: 0; }
+}
+@keyframes ring-fraud {
+    0%, 100% { border-color: #E24B4A; box-shadow: 0 0 20px rgba(226,75,74,0.4); }
+    50% { border-color: #C0392B; box-shadow: 0 0 35px rgba(226,75,74,0.6); }
+}
+@keyframes ring-success {
+    0%, 100% { border-color: #1D9E75; box-shadow: 0 0 20px rgba(29,158,117,0.5); }
+    50% { border-color: #00ff88; box-shadow: 0 0 40px rgba(0,255,136,0.6); }
+}
+.face-ring.fraud   { animation: ring-fraud   0.5s ease-in-out infinite; }
+.face-ring.success { animation: ring-success  0.6s ease-in-out infinite; }
+
+.status-box {
+    text-align: center;
+    padding: 14px 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s;
+}
+.status-box.scanning {
+    border-color: rgba(29,158,117,0.4);
+    background: rgba(29,158,117,0.06);
+    color: var(--accent);
+}
+.status-box.error {
+    border-color: rgba(226,75,74,0.4);
+    background: rgba(226,75,74,0.06);
+    color: #E24B4A;
+}
+.status-box.success {
+    border-color: rgba(29,158,117,0.4);
+    background: rgba(29,158,117,0.08);
+    color: var(--accent);
+}
+
+.countdown-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.attempt-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.attempt-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s;
+}
+.attempt-dot.used   { background: #E24B4A; }
+.attempt-dot.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="auth-wrapper">
+<div class="auth-card" style="max-width:420px">
+    <div class="auth-header">
+        <div class="auth-icon-wrap">
+            <span data-icon="camera" data-size="50" data-color="#1D9E75"></span>
+        </div>
+        <div class="auth-title">BIOMETRIC LOGIN</div>
+        <div class="auth-subtitle">AUTO FACE RECOGNITION</div>
+    </div>
+    <div class="auth-body">
+
+        <!-- Username -->
+        <div class="form-group" style="margin-bottom:18px">
+            <label class="form-label" for="username">USERNAME</label>
+            <input type="text" id="username" class="form-control" placeholder="Enter your username" oninput="onUsernameChange()">
+        </div>
+
+        <!-- Camera + face ring -->
+        <div class="face-container" id="faceContainer">
+            <video id="faceVideo" autoplay muted playsinline class="face-video"></video>
+            <div class="face-ring" id="faceRing"></div>
+            <div class="face-ring-outer"></div>
+            <div class="scan-line" id="scanLine"></div>
+        </div>
+        <canvas id="canvas" style="display:none"></canvas>
+
+        <!-- Attempt dots -->
+        <div class="attempt-dots" id="attemptDots">
+            <div class="attempt-dot active" id="dot0"></div>
+            <div class="attempt-dot" id="dot1"></div>
+            <div class="attempt-dot" id="dot2"></div>
+            <div class="attempt-dot" id="dot3"></div>
+            <div class="attempt-dot" id="dot4"></div>
+        </div>
+
+        <!-- Status -->
+        <div class="status-box" id="statusBox">
+             Enter your username to start scanning
+        </div>
+
+        <!-- Retry / back buttons -->
+        <div style="display:flex;gap:10px;margin-bottom:12px">
+            <button type="button" id="retryBtn" onclick="startScan()" class="btn btn-cyber btn-block" style="display:none">
+                Try Again
+            </button>
+        </div>
+        <p style="text-align:center;margin:0">
+            <a href="/login" class="auth-link" style="font-size:0.85rem">Back to password login</a>
+        </p>
+    </div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const MAX_ATTEMPTS = 5;
+const COUNTDOWN    = 3;    // seconds before first capture
+const RETRY_DELAY  = 2500; // ms between auto-retries
+
+let stream      = null;
+let attempt     = 0;
+let scanTimer   = null;
+let cntTimer    = null;
+let scanning    = false;
+let done        = false;
+
+// ── Camera ──────────────────────────────────────────────────
+async function startCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+        document.getElementById('faceVideo').srcObject = stream;
+        return true;
+    } catch(e) {
+        setStatus('error', 'Camera not accessible — allow permission and reload.');
+        return false;
+    }
+}
+
+// ── Username change ──────────────────────────────────────────
+function onUsernameChange() {
+    if (done || scanning) return;
+    const u = document.getElementById('username').value.trim();
+    if (u.length >= 2 && stream) {
+        startCountdown();
+    }
+}
+
+// ── Countdown then scan ──────────────────────────────────────
+function startCountdown() {
+    if (scanning || done) return;
+    clearTimeout(cntTimer);
+    let count = COUNTDOWN;
+    setStatus('scanning', `<span class="countdown-badge">${count}</span> &nbsp; Hold still — scanning in ${count}s`);
+    function tick() {
+        count--;
+        if (count <= 0) {
+            captureAndVerify();
+        } else {
+            setStatus('scanning', `<span class="countdown-badge">${count}</span> &nbsp; Scanning in ${count}s...`);
+            cntTimer = setTimeout(tick, 1000);
+        }
+    }
+    cntTimer = setTimeout(tick, 1000);
+}
+
+// ── Capture & verify ─────────────────────────────────────────
+async function captureAndVerify() {
+    const username = document.getElementById('username').value.trim();
+    if (!username) { setStatus('', 'Enter your username to start scanning'); return; }
+    if (done) return;
+
+    scanning = true;
+    document.getElementById('scanLine').classList.add('active');
+    setStatus('scanning', 'Analyzing face...');
+
+    const video  = document.getElementById('faceVideo');
+    const canvas = document.getElementById('canvas');
+    canvas.width  = video.videoWidth  || 320;
+    canvas.height = video.videoHeight || 320;
+    // mirror so it matches what face_recognition expects
+    const ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+
+    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+    try {
+        const res  = await fetch('/api/face-verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, image: imageData })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            done = true;
+            document.getElementById('scanLine').classList.remove('active');
+            document.getElementById('faceRing').classList.add('success');
+            setStatus('success', 'Identity Verified — ' + data.message);
+            markDot(attempt, 'active');
+            setTimeout(() => { window.location.href = data.redirect || '/dashboard'; }, 1500);
+        } else {
+            markDot(attempt, 'used');
+            attempt++;
+            scanning = false;
+            document.getElementById('scanLine').classList.remove('active');
+
+            if (attempt >= MAX_ATTEMPTS) {
+                done = true;
+                document.getElementById('faceRing').classList.add('fraud');
+                setStatus('error', 'Access Denied. Face not recognized after ' + MAX_ATTEMPTS + ' attempts.');
+                document.getElementById('retryBtn').style.display = 'block';
+            } else {
+                setStatus('error', `${data.message} &nbsp; (Attempt ${attempt}/${MAX_ATTEMPTS})`);
+                markDot(attempt, 'active');
+                // auto-retry after delay
+                scanTimer = setTimeout(() => {
+                    if (!done) startCountdown();
+                }, RETRY_DELAY);
+            }
+        }
+    } catch(e) {
+        scanning = false;
+        document.getElementById('scanLine').classList.remove('active');
+        setStatus('error', 'Network error — retrying...');
+        scanTimer = setTimeout(() => { if (!done) startCountdown(); }, RETRY_DELAY);
+    }
+}
+
+// ── Retry button ─────────────────────────────────────────────
+function startScan() {
+    done     = false;
+    scanning = false;
+    attempt  = 0;
+    clearTimeout(cntTimer);
+    clearTimeout(scanTimer);
+    document.getElementById('retryBtn').style.display = 'none';
+    document.getElementById('faceRing').className = 'face-ring';
+    // reset dots
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        const d = document.getElementById('dot' + i);
+        if (d) { d.className = 'attempt-dot'; }
+    }
+    document.getElementById('dot0').classList.add('active');
+    startCountdown();
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+function setStatus(type, html) {
+    const sb = document.getElementById('statusBox');
+    sb.className = 'status-box' + (type ? ' ' + type : '');
+    sb.innerHTML = html;
+}
+
+function markDot(index, cls) {
+    const d = document.getElementById('dot' + index);
+    if (d) { d.className = 'attempt-dot ' + cls; }
+}
+
+// ── Init ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+    setStatus('', 'Starting camera...');
+    const ok = await startCamera();
+    if (ok) {
+        // wait for video to be ready
+        document.getElementById('faceVideo').addEventListener('loadedmetadata', () => {
+            const u = document.getElementById('username').value.trim();
+            if (u.length >= 2) {
+                startCountdown();
+            } else {
+                setStatus('', 'Enter your username — camera ready');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

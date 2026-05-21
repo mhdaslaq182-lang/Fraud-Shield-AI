@@ -1,0 +1,98 @@
+{% extends "fraud/_layout.html" %}
+{% block title %}Bank Data Upload{% endblock %}
+{% block fraud_content %}
+<div class="fraud-header">
+  <div class="fraud-title">Bank Data Upload &amp; Analysis</div>
+  <div class="fraud-sub">Upload real bank transaction data — AI analyzes and detects fraud instantly</div>
+</div>
+
+<div class="input-section" style="margin-bottom:20px">
+  <div class="input-section-title">How to Use</div>
+  <div style="font-size:0.9rem;color:var(--text-secondary);line-height:1.9">
+    1. Download the sample template below &nbsp;·&nbsp;
+    2. Fill with your bank transaction data &nbsp;·&nbsp;
+    3. Upload the CSV file &nbsp;·&nbsp;
+    4. Click Analyze to run AI fraud detection &nbsp;·&nbsp;
+    5. View &amp; download results
+  </div>
+</div>
+
+<div class="input-grid">
+  <div class="input-section">
+    <div class="input-section-title">Upload Transaction CSV</div>
+    <div class="upload-drop" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="handleDrop(event)">
+      <div class="upload-icon"><span data-icon="database" data-size="40" data-color="#1D9E75"></span></div>
+      <div class="upload-text">Click or drag CSV here</div>
+      <div class="upload-hint" id="fileName">Supports: CSV files with transaction data</div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv" style="display:none" onchange="fileSelected(this)">
+    <button type="button" class="btn-analyze" id="analyzeBtn" onclick="analyze()" style="margin-top:14px" disabled>Analyze with AI</button>
+  </div>
+  <div class="input-section">
+    <div class="input-section-title">Required Columns</div>
+    <div style="font-size:0.85rem;color:var(--text-secondary);line-height:2">
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">amount_lkr</code> &nbsp;
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">hour</code> &nbsp;
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">distance_km</code><br>
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">failed_logins</code> &nbsp;
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">new_device</code><br>
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">account_age</code> &nbsp;
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">countries</code><br>
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">velocity_24h</code> &nbsp;
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">email_risk</code> &nbsp;
+      <code style="background:rgba(29,158,117,0.08);padding:2px 8px;border-radius:5px;color:var(--accent)">balance_lkr</code>
+    </div>
+    <div style="margin-top:16px">
+      <a href="/fraud/upload/template" class="btn-analyze" style="display:block;text-align:center;text-decoration:none;padding:12px;font-size:0.9rem">Download Sample Template</a>
+    </div>
+  </div>
+</div>
+
+<div class="result-card" id="result">
+  <div class="summary-bar" id="summaryBar"></div>
+  <div id="fraudTableWrap" style="display:none">
+    <div class="section-label">Fraudulent Transactions</div>
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:16px;overflow:auto;backdrop-filter:blur(20px)">
+      <table class="txn-table">
+        <thead><tr><th>Amount (Rs.)</th><th>Bank</th><th>City</th><th>Fraud Prob.</th><th>Risk</th><th>Decision</th></tr></thead>
+        <tbody id="fraudBody"></tbody>
+      </table>
+    </div>
+    <a id="downloadBtn" href="#" style="display:inline-block;margin-top:14px;padding:10px 20px;background:rgba(29,158,117,0.1);border:1px solid rgba(29,158,117,0.3);color:var(--accent);border-radius:10px;font-weight:600;text-decoration:none;font-size:0.9rem">Download Full Results (CSV)</a>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+let selectedFile=null;
+function fileSelected(input){selectedFile=input.files[0];if(selectedFile){document.getElementById('fileName').textContent=selectedFile.name+' ('+Math.round(selectedFile.size/1024)+'KB)';document.getElementById('analyzeBtn').disabled=false;}}
+function handleDrop(e){e.preventDefault();document.getElementById('dropZone').classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.name.endsWith('.csv')){selectedFile=f;document.getElementById('fileName').textContent=f.name;document.getElementById('analyzeBtn').disabled=false;}}
+async function analyze(){
+  if(!selectedFile)return;
+  const btn=document.getElementById('analyzeBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Analyzing...';
+  const form=new FormData();form.append('file',selectedFile);
+  try{
+    const res=await fetch('/fraud/upload/analyze',{method:'POST',body:form});
+    const d=await res.json();if(d.error){alert('Error: '+d.error);return;}
+    const rc=document.getElementById('result');rc.classList.add('show');
+    document.getElementById('summaryBar').innerHTML=`
+      <div class="summary-stat"><div class="summary-num">${d.total}</div><div class="summary-lbl">Total</div></div>
+      <div class="summary-stat"><div class="summary-num" style="color:#E24B4A">${d.fraud_count}</div><div class="summary-lbl">Fraud</div></div>
+      <div class="summary-stat"><div class="summary-num" style="color:var(--accent)">${d.legit_count}</div><div class="summary-lbl">Legitimate</div></div>
+      <div class="summary-stat"><div class="summary-num">${d.fraud_rate}</div><div class="summary-lbl">Fraud Rate</div></div>`;
+    if(d.fraud_results.length>0){
+      document.getElementById('fraudTableWrap').style.display='block';
+      const tb=document.getElementById('fraudBody');tb.innerHTML='';
+      d.fraud_results.forEach(r=>{tb.innerHTML+=`<tr><td>Rs. ${parseFloat(r.amount_lkr).toLocaleString()}</td><td>${r.bank}</td><td>${r.city}</td><td class="badge-fraud">${(r.fraud_probability*100).toFixed(1)}%</td><td><span class="risk-badge risk-${r.risk_level}">${r.risk_level}</span></td><td class="badge-fraud">${r.decision}</td></tr>`;});
+      // CSV download
+      const csv='amount_lkr,bank,city,fraud_probability,risk_level,decision\n'+d.results.map(r=>`${r.amount_lkr},${r.bank},${r.city},${r.fraud_probability},${r.risk_level},${r.decision}`).join('\n');
+      const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);
+      const a=document.getElementById('downloadBtn');a.href=url;a.download='fraud_results.csv';
+    }
+    rc.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){alert('Failed: '+e);}
+  finally{btn.disabled=false;btn.innerHTML='Analyze with AI';}
+}
+</script>
+{% endblock %}

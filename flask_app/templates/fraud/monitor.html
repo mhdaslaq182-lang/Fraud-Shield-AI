@@ -1,0 +1,256 @@
+{% extends "fraud/_layout.html" %}
+{% block title %}Live Monitor{% endblock %}
+{% block extra_css %}
+{{ super() }}
+<style>
+@keyframes live-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+@keyframes row-in { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+.txn-new { animation: row-in 0.3s ease forwards; }
+</style>
+{% endblock %}
+{% block fraud_content %}
+<div class="fraud-header">
+  <div class="fraud-title">Real-Time Transaction Monitor</div>
+  <div class="fraud-sub">Unlimited live streaming — runs until you stop it</div>
+</div>
+
+<!-- Controls -->
+<div class="input-section" style="margin-bottom:20px">
+  <div class="input-section-title">Monitor Controls</div>
+  <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+    <div style="flex:1;min-width:180px">
+      <label for="speedRange" style="font-size:0.82rem;font-weight:600;color:var(--text-secondary);letter-spacing:0.5px;text-transform:uppercase">Speed: <span id="speed_lbl">Normal (0.5s)</span></label>
+      <div class="range-wrap" style="margin-top:8px">
+        <input type="range" id="speedRange" min="1" max="5" value="3" oninput="updateSpeedLabel(this.value)">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button type="button" class="btn-analyze" id="startBtn" onclick="startMonitor()" style="margin:0">▶ START LIVE MONITOR</button>
+      <button type="button" class="btn-analyze" id="stopBtn" onclick="stopMonitor()" style="margin:0;display:none;background:rgba(226,75,74,0.15);border-color:rgba(226,75,74,0.4);color:#E24B4A">■ STOP</button>
+    </div>
+  </div>
+</div>
+
+<!-- Live pulse bar -->
+<div id="liveBar" style="display:none;align-items:center;gap:12px;margin-bottom:16px;padding:12px 20px;background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.25);border-radius:12px">
+  <span id="liveDot" style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0;display:inline-block"></span>
+  <span id="liveText" style="color:var(--accent);font-weight:600;font-size:0.9rem">Connecting...</span>
+</div>
+
+<!-- Stats -->
+<div class="summary-bar" id="statsBar" style="display:none">
+  <div class="summary-stat"><div class="summary-num" id="sTotal">0</div><div class="summary-lbl">Processed</div></div>
+  <div class="summary-stat"><div class="summary-num" id="sFraud" style="color:#E24B4A">0</div><div class="summary-lbl">Fraud Detected</div></div>
+  <div class="summary-stat"><div class="summary-num" id="sLegit" style="color:var(--accent)">0</div><div class="summary-lbl">Legitimate</div></div>
+  <div class="summary-stat"><div class="summary-num" id="sRate">0%</div><div class="summary-lbl">Fraud Rate</div></div>
+</div>
+
+<!-- Live Charts -->
+<div id="chartsWrap" style="display:none;margin-bottom:20px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <!-- Fraud rate trend -->
+    <div class="glass-card" style="padding:18px">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Fraud Rate % — Live</div>
+      <canvas id="rateChart" height="160"></canvas>
+    </div>
+    <!-- Fraud vs Legit stacked -->
+    <div class="glass-card" style="padding:18px">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Fraud vs Legitimate — Cumulative</div>
+      <canvas id="stackChart" height="160"></canvas>
+    </div>
+  </div>
+  <!-- Probability sparkline -->
+  <div class="glass-card" style="padding:18px;margin-top:16px">
+    <div style="font-size:0.8rem;font-weight:700;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Fraud Probability per Transaction — Last 50</div>
+    <canvas id="probChart" height="100"></canvas>
+  </div>
+</div>
+
+<!-- Transaction table -->
+<div id="tableWrap" style="display:none">
+  <div class="section-label">Live Transaction Feed</div>
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:16px;overflow:hidden;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);max-height:340px;overflow-y:auto">
+    <table class="txn-table">
+      <thead style="position:sticky;top:0;z-index:2;background:var(--card-bg)">
+        <tr><th>#</th><th>Time</th><th>Amount</th><th>Bank</th><th>City</th><th>Status</th><th>Risk %</th></tr>
+      </thead>
+      <tbody id="txnBody"></tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const SPEEDS = { 1: [2.0, 'Slow (2s)'], 2: [1.0, 'Moderate (1s)'], 3: [0.5, 'Normal (0.5s)'], 4: [0.25, 'Fast (0.25s)'], 5: [0.1, 'Turbo (0.1s)'] };
+const MAX_TABLE_ROWS = 100;
+const CHART_WINDOW   = 50; // rolling window for prob chart
+
+let es = null, totalFraud = 0, totalProcessed = 0;
+let rateChart = null, stackChart = null, probChart = null;
+let rateLabels = [], rateData = [], fraudData = [], legitData = [], probData = [], probLabels = [];
+
+function updateSpeedLabel(v) {
+  document.getElementById('speed_lbl').textContent = SPEEDS[v][1];
+}
+
+function initCharts() {
+  const dark = { color: 'rgba(255,255,255,0.7)', grid: 'rgba(255,255,255,0.07)' };
+
+  rateChart = new Chart(document.getElementById('rateChart'), {
+    type: 'line',
+    data: { labels: rateLabels, datasets: [{
+      label: 'Fraud Rate %', data: rateData,
+      borderColor: '#E24B4A', backgroundColor: 'rgba(226,75,74,0.12)',
+      fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
+    }]},
+    options: { animation: false, responsive: true, plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { min: 0, max: 100, ticks: { color: dark.color, callback: v => v + '%' },
+             grid: { color: dark.grid } }
+      }
+    }
+  });
+
+  stackChart = new Chart(document.getElementById('stackChart'), {
+    type: 'line',
+    data: { labels: rateLabels, datasets: [
+      { label: 'Fraud',     data: fraudData, borderColor: '#E24B4A', backgroundColor: 'rgba(226,75,74,0.15)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+      { label: 'Legit',     data: legitData, borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.15)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+    ]},
+    options: { animation: false, responsive: true,
+      plugins: { legend: { labels: { color: dark.color, boxWidth: 12 } } },
+      scales: {
+        x: { display: false },
+        y: { ticks: { color: dark.color }, grid: { color: dark.grid } }
+      }
+    }
+  });
+
+  probChart = new Chart(document.getElementById('probChart'), {
+    type: 'bar',
+    data: { labels: probLabels, datasets: [{
+      label: 'Fraud Prob %', data: probData,
+      backgroundColor: probData.map(v => v > 50 ? 'rgba(226,75,74,0.8)' : 'rgba(29,158,117,0.6)'),
+      borderWidth: 0, borderRadius: 2,
+    }]},
+    options: { animation: false, responsive: true, plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { min: 0, max: 100, ticks: { color: dark.color, callback: v => v + '%' },
+             grid: { color: dark.grid } }
+      }
+    }
+  });
+}
+
+function pushChartPoint(num, fraudCount, processed, probRaw, isFraud) {
+  const label = String(num);
+  const rate  = processed > 0 ? Math.round(fraudCount / processed * 100) : 0;
+
+  // Rate chart — sample every 5 txns to avoid clutter
+  if (num % 5 === 0) {
+    rateLabels.push(label);
+    rateData.push(rate);
+    fraudData.push(fraudCount);
+    legitData.push(processed - fraudCount);
+    // keep last 100 points
+    if (rateLabels.length > 100) {
+      rateLabels.shift(); rateData.shift(); fraudData.shift(); legitData.shift();
+    }
+    rateChart.data.datasets[0].backgroundColor = 'rgba(226,75,74,0.12)';
+    rateChart.update('none');
+    stackChart.update('none');
+  }
+
+  // Prob sparkline — rolling last CHART_WINDOW
+  probLabels.push(label);
+  probData.push(probRaw);
+  if (probLabels.length > CHART_WINDOW) { probLabels.shift(); probData.shift(); }
+  probChart.data.datasets[0].backgroundColor = probData.map(v => v > 50 ? 'rgba(226,75,74,0.8)' : 'rgba(29,158,117,0.6)');
+  probChart.update('none');
+}
+
+function startMonitor() {
+  const speedVal = document.getElementById('speedRange').value;
+  const delay    = SPEEDS[speedVal][0];
+
+  totalFraud = 0; totalProcessed = 0;
+  rateLabels=[]; rateData=[]; fraudData=[]; legitData=[]; probData=[]; probLabels=[];
+
+  document.getElementById('txnBody').innerHTML = '';
+  document.getElementById('statsBar').style.display = 'grid';
+  document.getElementById('tableWrap').style.display = 'block';
+  document.getElementById('chartsWrap').style.display = 'block';
+  document.getElementById('liveBar').style.display = 'flex';
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('stopBtn').style.display = 'inline-block';
+
+  const liveDot = document.getElementById('liveDot');
+  liveDot.style.animation = 'live-pulse 1s ease-in-out infinite';
+  liveDot.style.background = '#1D9E75';
+  document.getElementById('liveText').textContent = 'Connecting to live feed...';
+
+  if (rateChart) { rateChart.destroy(); stackChart.destroy(); probChart.destroy(); }
+  initCharts();
+
+  if (es) es.close();
+  es = new EventSource(`/fraud/monitor/stream?delay=${delay}`);
+
+  es.onmessage = function(e) {
+    const r = JSON.parse(e.data);
+    if (r.error) { stopMonitor('Error: ' + r.error); return; }
+
+    totalProcessed = r.num;
+    totalFraud     = r.fraud_count;
+    const rate     = Math.round(totalFraud / totalProcessed * 100);
+
+    document.getElementById('liveText').textContent = `Processing transaction #${r.num} — ${rate}% fraud rate`;
+    document.getElementById('sTotal').textContent   = r.num;
+    document.getElementById('sFraud').textContent   = totalFraud;
+    document.getElementById('sLegit').textContent   = r.num - totalFraud;
+    document.getElementById('sRate').textContent    = rate + '%';
+
+    pushChartPoint(r.num, totalFraud, totalProcessed, r.prob_raw, r.is_fraud);
+
+    const tbody = document.getElementById('txnBody');
+    if (tbody.rows.length >= MAX_TABLE_ROWS) tbody.deleteRow(-1);
+    const tr = document.createElement('tr');
+    tr.className = 'txn-new';
+    tr.innerHTML = `
+      <td style="color:var(--text-muted)">${r.num}</td>
+      <td>${r.time}</td>
+      <td style="font-weight:600">${r.amount}</td>
+      <td>${r.bank}</td>
+      <td>${r.city}</td>
+      <td><span class="${r.is_fraud ? 'badge-fraud' : 'badge-safe'}">${r.status}</span></td>
+      <td style="color:${r.is_fraud ? '#E24B4A' : 'var(--accent)'};font-weight:600">${r.risk}</td>
+    `;
+    tbody.insertBefore(tr, tbody.firstChild);
+  };
+
+  es.onerror = function() { stopMonitor('Stream interrupted'); };
+}
+
+function stopMonitor(reason) {
+  if (es) { es.close(); es = null; }
+  document.getElementById('startBtn').style.display = 'inline-block';
+  document.getElementById('stopBtn').style.display = 'none';
+  const liveDot = document.getElementById('liveDot');
+  liveDot.style.animation = 'none';
+  if (!reason) {
+    liveDot.style.background = '#ffa502';
+    document.getElementById('liveText').textContent = `Stopped — ${totalProcessed} transactions processed, ${totalFraud} fraud detected`;
+  } else if (reason.startsWith('Error')) {
+    liveDot.style.background = '#E24B4A';
+    document.getElementById('liveText').textContent = reason;
+  } else {
+    liveDot.style.background = '#1D9E75';
+    document.getElementById('liveText').textContent = `Complete — ${totalProcessed} transactions, ${totalFraud} fraud detected`;
+  }
+}
+</script>
+{% endblock %}

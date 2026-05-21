@@ -1,0 +1,92 @@
+{% extends "fraud/_layout.html" %}
+{% block title %}Phishing Detector{% endblock %}
+{% block fraud_content %}
+<div class="fraud-header">
+  <div class="fraud-title">Phishing Detector</div>
+  <div class="fraud-sub">Email &amp; SMS Scam Detection using NLP Analysis</div>
+</div>
+
+<div class="input-grid" style="grid-template-columns:2fr 1fr">
+  <div class="input-section">
+    <div class="input-section-title">Analyze Suspicious Text</div>
+    <div class="form-group">
+      <label for="txt">Paste suspicious email or SMS</label>
+      <textarea class="form-control" id="txt" rows="7" placeholder="Example: URGENT! Your BOC account is suspended. Verify now at http://secure-boc.xyz ..."></textarea>
+    </div>
+    <button type="button" class="btn-analyze" id="analyzeBtn" onclick="analyze()">Analyze Text</button>
+  </div>
+  <div class="input-section">
+    <div class="input-section-title">Test Examples</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button type="button" class="form-control" style="cursor:pointer;text-align:left;font-size:0.82rem;padding:10px 12px;border-radius:10px;background:rgba(226,75,74,0.06);border:1px solid rgba(226,75,74,0.2);color:var(--text-primary)" onclick="setExample(0)">[FRAUD] URGENT: Your BOC account suspended! Verify: http://secure-boc.xyz</button>
+      <button type="button" class="form-control" style="cursor:pointer;text-align:left;font-size:0.82rem;padding:10px 12px;border-radius:10px;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.2);color:var(--text-primary)" onclick="setExample(1)">Your Dialog bill is ready. Pay at dialog.lk/bill</button>
+      <button type="button" class="form-control" style="cursor:pointer;text-align:left;font-size:0.82rem;padding:10px 12px;border-radius:10px;background:rgba(226,75,74,0.06);border:1px solid rgba(226,75,74,0.2);color:var(--text-primary)" onclick="setExample(2)">[FRAUD] You won Rs.500,000! Send bank details NOW to claim!</button>
+      <button type="button" class="form-control" style="cursor:pointer;text-align:left;font-size:0.82rem;padding:10px 12px;border-radius:10px;background:rgba(29,158,117,0.06);border:1px solid rgba(29,158,117,0.2);color:var(--text-primary)" onclick="setExample(3)">Your Sampath statement is available. Login at sampath.lk</button>
+    </div>
+  </div>
+</div>
+
+<div class="result-card" id="result">
+  <div class="result-verdict" id="verdict">
+    <div class="verdict-icon" id="vIcon"></div>
+    <div class="verdict-label" id="vLabel"></div>
+    <div class="verdict-detail" id="vDetail"></div>
+  </div>
+  <div class="result-metrics">
+    <div class="result-metric"><div class="metric-val" id="mScore">—</div><div class="metric-lbl">Risk Score /100</div></div>
+    <div class="result-metric"><div class="metric-val" id="mKeywords">—</div><div class="metric-lbl">Keywords Found</div></div>
+    <div class="result-metric"><div class="metric-val" id="mUrls">—</div><div class="metric-lbl">Suspicious URLs</div></div>
+  </div>
+  <div class="gauge-bar" style="margin:16px 0"><div class="gauge-fill" id="gauge" style="width:0%"></div></div>
+  <div id="keywordsWrap" style="display:none">
+    <div class="section-label">Detected Keywords</div>
+    <div class="phishing-keywords" id="keywordsBox"></div>
+  </div>
+  <div id="urlsWrap" style="display:none;margin-top:12px">
+    <div class="section-label">Suspicious URLs</div>
+    <div class="phishing-keywords" id="urlsBox"></div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+const examples = [
+  "URGENT! Your BOC account has been suspended due to unusual activity. Verify your identity immediately at http://secure-boc.xyz or your account will be permanently closed. Act now!",
+  "Your Dialog monthly bill of Rs. 1,250 is ready. Pay online at dialog.lk/bill or visit any Dialog outlet.",
+  "Congratulations! You won a prize of Rs.500,000 in the National Lottery! To claim your free gift, send your bank details and password to this number immediately. Limited time offer!",
+  "Dear customer, your Sampath Bank statement for April 2026 is available. Login at sampath.lk to download."
+];
+function setExample(i){ document.getElementById('txt').value=examples[i]; }
+async function analyze(){
+  const txt=document.getElementById('txt').value.trim();
+  if(!txt){alert('Please enter text to analyze.');return;}
+  const btn=document.getElementById('analyzeBtn');btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Analyzing...';
+  try{
+    const res=await fetch('/fraud/phishing/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:txt})});
+    const d=await res.json();if(d.error){alert('Error: '+d.error);return;}
+    const rc=document.getElementById('result');rc.classList.add('show');
+    document.getElementById('verdict').className='result-verdict '+(d.is_phishing?'fraud':'safe');
+    document.getElementById('vIcon').innerHTML=d.is_phishing?icon('alert',28,'#E24B4A'):icon('check',28,'#1D9E75');
+    document.getElementById('vLabel').className='verdict-label '+(d.is_phishing?'fraud-text':'safe-text');
+    document.getElementById('vLabel').textContent=d.is_phishing?'PHISHING DETECTED':'LOOKS SAFE';
+    document.getElementById('vDetail').textContent='Risk Score: '+d.score+'/100 · Risk Level: '+d.risk;
+    document.getElementById('mScore').textContent=d.score+'/100';
+    document.getElementById('mKeywords').textContent=d.matched.length;
+    document.getElementById('mUrls').textContent=d.bad_urls.length;
+    const p=d.score;const c=p>70?'#E24B4A':p>40?'#EF9F27':'#1D9E75';
+    const g=document.getElementById('gauge');g.style.width=p+'%';g.style.background=`linear-gradient(90deg,#1D9E75,${c})`;
+    if(d.matched.length>0){
+      document.getElementById('keywordsWrap').style.display='block';
+      document.getElementById('keywordsBox').innerHTML=d.matched.map(k=>`<span class="keyword-chip">${k}</span>`).join('');
+    }
+    if(d.bad_urls.length>0){
+      document.getElementById('urlsWrap').style.display='block';
+      document.getElementById('urlsBox').innerHTML=d.bad_urls.map(u=>`<span class="keyword-chip">${u}</span>`).join('');
+    }
+    rc.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){alert('Failed: '+e);}
+  finally{btn.disabled=false;btn.innerHTML='Analyze Text';}
+}
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "fraud/_layout.html" %}
+{% block title %}Alert Log{% endblock %}
+{% block fraud_content %}
+<div class="fraud-header">
+  <div class="fraud-title">Fraud Alert Log</div>
+  <div class="fraud-sub">All fraud events detected across all modules</div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+  <div class="summary-bar" style="display:flex;gap:14px;margin-bottom:0">
+    <div class="summary-stat"><div class="summary-num" id="totalAlerts">—</div><div class="summary-lbl">Total Alerts</div></div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <button type="button" class="btn-analyze" style="margin:0;padding:10px 20px;width:auto" onclick="loadAlerts()">Refresh</button>
+    <button type="button" onclick="clearAlerts()" style="padding:10px 20px;background:rgba(226,75,74,0.1);border:1px solid rgba(226,75,74,0.3);color:#E24B4A;border-radius:10px;font-weight:600;cursor:pointer;font-size:0.9rem">Clear Log</button>
+  </div>
+</div>
+
+<div id="alertsContainer">
+  <div class="alert-empty">Loading alerts...</div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+async function loadAlerts(){
+  const res=await fetch('/fraud/alerts/data');
+  const d=await res.json();
+  document.getElementById('totalAlerts').textContent=d.total;
+  const c=document.getElementById('alertsContainer');
+  if(d.alerts.length===0){c.innerHTML='<div class="alert-empty">No fraud alerts — system is clean.</div>';return;}
+  c.innerHTML=d.alerts.map(a=>`
+    <div class="alert-row">
+      <div class="alert-type">${a.fraud_type||'Unknown'}</div>
+      <div class="alert-time">${(a.timestamp||'').replace('T',' ').slice(0,19)}</div>
+      <div class="alert-prob">${a.probability!==undefined?(a.probability*100).toFixed(1)+'%':'—'}</div>
+      <span class="risk-badge risk-${a.risk_level||'MEDIUM'}">${a.risk_level||'—'}</span>
+      ${a.amount_lkr!==undefined?`<div style="font-size:0.85rem;color:var(--text-secondary)">Rs. ${parseFloat(a.amount_lkr).toLocaleString()}</div>`:''}
+    </div>`).join('');
+}
+async function clearAlerts(){
+  if(!confirm('Clear all alerts?'))return;
+  await fetch('/fraud/alerts/clear',{method:'POST'});
+  loadAlerts();
+}
+loadAlerts();
+</script>
+{% endblock %}

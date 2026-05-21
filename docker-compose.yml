@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  fraud-detection:
+    build: .
+    container_name: ai_fraud_detection_sl
+    ports:
+      - "5000:5000"
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./plots:/app/plots
+      - ./faces:/app/faces
+      - ./alerts:/app/alerts
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
