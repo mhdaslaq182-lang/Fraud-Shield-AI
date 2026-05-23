@@ -719,8 +719,8 @@ function startStream() {
   initMap();
 
   const url = currentTab === 'monitor'
-    ? `/fraud/monitor/stream?delay=${delay}`
-    : `/fraud/pipeline/stream?delay=${delay}`;
+    ? `/dashboard/monitor/stream?delay=${delay}`
+    : `/dashboard/pipeline/stream?delay=${delay}`;
 
   es = new EventSource(url);
   es.onmessage = function(e) {

@@ -177,7 +177,7 @@ function startPipeline() {
   initCharts();
 
   if (es) es.close();
-  es = new EventSource(`/fraud/pipeline/stream?delay=${delay}`);
+  es = new EventSource(`/dashboard/pipeline/stream?delay=${delay}`);
 
   es.onmessage = function(e) {
     const r = JSON.parse(e.data);

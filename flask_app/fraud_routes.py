@@ -242,19 +242,9 @@ def phishing_analyze():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ── LIVE MONITOR ──────────────────────────────────────────────────────────────
+# ── LIVE MONITOR (streams served under /dashboard/) ──────────────────────────
 
-@fraud.route("/fraud/monitor")
-@login_required
-def monitor():
-    return render_template("fraud/live.html", active="monitor", init_tab="monitor")
-
-@fraud.route("/fraud/pipeline")
-@login_required
-def pipeline():
-    return render_template("fraud/live.html", active="pipeline", init_tab="pipeline")
-
-@fraud.route("/fraud/monitor/stream")
+@fraud.route("/dashboard/monitor/stream")
 @login_required
 def monitor_stream():
     delay = float(request.args.get("delay", 0.5))
@@ -323,7 +313,7 @@ def monitor_stream():
 
 # ── PIPELINE STREAM ───────────────────────────────────────────────────────────
 
-@fraud.route("/fraud/pipeline/stream")
+@fraud.route("/dashboard/pipeline/stream")
 @login_required
 def pipeline_stream():
     delay = float(request.args.get("delay", 0.4))

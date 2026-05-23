@@ -198,7 +198,7 @@ function startMonitor() {
   initCharts();
 
   if (es) es.close();
-  es = new EventSource(`/fraud/monitor/stream?delay=${delay}`);
+  es = new EventSource(`/dashboard/monitor/stream?delay=${delay}`);
 
   es.onmessage = function(e) {
     const r = JSON.parse(e.data);

@@ -1,5 +1,311 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* ── Tab Bar ── */
+.live-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 5px;
+  margin-bottom: 24px;
+  width: fit-content;
+}
+.live-tab {
+  padding: 10px 28px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'Space Grotesk', sans-serif;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.live-tab.active {
+  background: linear-gradient(135deg, var(--accent), #0F6E56);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(29,158,117,0.3);
+}
+.live-tab:not(.active):hover { color: var(--accent); }
+.tab-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.tab-dot.live { opacity: 1; animation: tab-pulse 1s ease-in-out infinite; }
+@keyframes tab-pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Status strip ── */
+.status-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  margin-bottom: 18px;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.status-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.status-dot.live  { background: #1D9E75; box-shadow: 0 0 8px rgba(29,158,117,0.6); animation: tab-pulse 1s ease-in-out infinite; }
+.status-dot.error { background: #E24B4A; }
+.status-dot.idle  { background: var(--border); }
+.status-text { flex: 1; font-weight: 600; font-size: 0.88rem; color: var(--text-secondary); }
+.status-text.live  { color: var(--accent); }
+.status-text.error { color: #E24B4A; }
+
+/* ── Controls row ── */
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 22px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 18px;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  flex-wrap: wrap;
+}
+.speed-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+}
+.speed-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+}
+.speed-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.speed-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'Space Grotesk', sans-serif;
+}
+.speed-chip:hover { border-color: var(--accent); color: var(--accent); }
+.speed-chip.active { background: rgba(29,158,117,0.15); border-color: var(--accent); color: var(--accent); }
+
+.btn-go {
+  padding: 12px 30px;
+  background: linear-gradient(135deg, var(--accent), #0F6E56);
+  color: #fff;
+  border: none;
+  border-radius: 11px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-go:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(29,158,117,0.35); }
+.btn-stop {
+  padding: 12px 22px;
+  background: rgba(226,75,74,0.1);
+  color: #E24B4A;
+  border: 1px solid rgba(226,75,74,0.35);
+  border-radius: 11px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  transition: all 0.2s;
+  display: none;
+  white-space: nowrap;
+}
+.btn-stop:hover { background: rgba(226,75,74,0.18); }
+
+/* ── Stats row ── */
+.live-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.live-stat {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 14px 10px;
+  text-align: center;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  transition: border-color 0.3s;
+}
+.live-stat-num {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 5px;
+  transition: color 0.3s;
+}
+.live-stat-lbl {
+  font-size: 0.68rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ── Main body: charts + feed ── */
+.live-body {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2.5fr);
+  gap: 16px;
+  align-items: start;
+}
+.live-charts-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.live-feed-col   { display: flex; flex-direction: column; gap: 0; min-width: 0; overflow: hidden; }
+
+.live-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.live-card-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.live-card-title-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* Feed */
+.feed-scroll {
+  max-height: 480px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.feed-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 52px 44px;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(29,158,117,0.05);
+  animation: row-in 0.3s ease forwards;
+}
+@keyframes row-in { from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)} }
+.feed-row:hover { background: rgba(29,158,117,0.03); border-radius: 8px; }
+.feed-meta  { display:flex; flex-direction:column; gap:1px; overflow:hidden; }
+.feed-num   { font-size:0.68rem; color:var(--text-muted); white-space:nowrap; }
+.feed-time  { font-size:0.68rem; color:var(--text-muted); white-space:nowrap; }
+.feed-bank  { font-weight:700; color:var(--text-primary); font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.feed-amt   { font-size:0.75rem; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.feed-badge { font-size:0.7rem; font-weight:700; text-align:center; white-space:nowrap; }
+.feed-badge.f { color:#E24B4A; }
+.feed-badge.s { color:var(--accent); }
+.feed-prob  { font-size:0.7rem; font-weight:700; text-align:right; white-space:nowrap; }
+
+/* ── Charts grid ── */
+.charts-grid-2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px; }
+.charts-grid-2 > div { min-width: 0; overflow: hidden; }
+
+/* ── Tab panel ── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+@media (max-width: 1100px) {
+  .live-body { grid-template-columns: 1fr; }
+  .live-stats { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 640px) {
+  .live-stats { grid-template-columns: repeat(2, 1fr); }
+  .charts-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ── Map ── */
+#lkMap { height: 380px; border-radius: 10px; overflow: hidden; }
+.leaflet-container { background: #1a2332 !important; }
+.map-pin { position: relative; width: 16px; height: 16px; }
+.map-dot {
+  position: absolute; top: 3px; left: 3px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+.map-ring {
+  position: absolute; top: 0; left: 0;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  animation: map-ripple 1.8s ease-out forwards;
+}
+.pin-fraud .map-dot  { background: #E24B4A; }
+.pin-fraud .map-ring { color: #E24B4A; }
+.pin-safe  .map-dot  { background: #1D9E75; }
+.pin-safe  .map-ring { color: #1D9E75; }
+@keyframes map-ripple {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  100% { transform: scale(3.5); opacity: 0;   }
+}
+.map-legend {
+  display: flex; gap: 16px; align-items: center;
+  margin-left: auto; font-size: 0.75rem; font-weight: 600;
+}
+.map-legend-dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px;
+}
+</style>
+{% endblock %}
 {% block content %}
 <div class="dash-header">
     <div>
@@ -21,7 +327,132 @@
     <div class="stat-card"><div class="stat-number">89</div><div class="stat-label">SL Cities</div></div>
     <div class="stat-card"><div class="stat-number" style="color:var(--gold)">15</div><div class="stat-label">SL Banks</div></div>
 </div>
+
+<!-- ═══════════════════════════════════════ LIVE MONITOR ═══════════ -->
 <div style="margin-bottom:20px">
+    <h3 style="font-family:'Orbitron',sans-serif;font-size:0.9rem;color:var(--text-secondary);letter-spacing:3px">LIVE FRAUD INTELLIGENCE</h3>
+    <div style="font-size:0.82rem;color:var(--text-muted);margin-top:4px">Real-time unlimited transaction streaming with live analytics</div>
+</div>
+
+<!-- Tab switcher -->
+<div class="live-tabs">
+  <button type="button" class="live-tab" id="tab-monitor" onclick="switchTab('monitor')">
+    <span data-icon="eye" data-size="16"></span> Live Monitor
+    <span class="tab-dot" id="dot-monitor"></span>
+  </button>
+  <button type="button" class="live-tab" id="tab-pipeline" onclick="switchTab('pipeline')">
+    <span data-icon="cpu" data-size="16"></span> AI Pipeline
+    <span class="tab-dot" id="dot-pipeline"></span>
+  </button>
+</div>
+
+<!-- Status strip -->
+<div class="status-strip" id="statusStrip">
+  <span class="status-dot idle" id="statusDot"></span>
+  <span class="status-text" id="statusText">Select a tab and press Start</span>
+  <span id="txnCounter" style="font-size:0.8rem;color:var(--text-muted);font-weight:600"></span>
+</div>
+
+<!-- Controls -->
+<div class="controls-row">
+  <div class="speed-group">
+    <div class="speed-label">Speed</div>
+    <div class="speed-chips" id="speedChips">
+      <button type="button" class="speed-chip" data-d="2.0"  onclick="setSpeed(this)">Slow</button>
+      <button type="button" class="speed-chip" data-d="1.0"  onclick="setSpeed(this)">Moderate</button>
+      <button type="button" class="speed-chip active" data-d="0.5"  onclick="setSpeed(this)">Normal</button>
+      <button type="button" class="speed-chip" data-d="0.2"  onclick="setSpeed(this)">Fast</button>
+      <button type="button" class="speed-chip" data-d="0.1"  onclick="setSpeed(this)">Turbo</button>
+    </div>
+  </div>
+  <button type="button" class="btn-go" id="btnStart" onclick="startStream()">
+    &#9654; &nbsp;START
+  </button>
+  <button type="button" class="btn-stop" id="btnStop" onclick="stopStream()">
+    &#9632; &nbsp;STOP
+  </button>
+</div>
+
+<!-- Stats -->
+<div class="live-stats">
+  <div class="live-stat">
+    <div class="live-stat-num" id="sTotal">0</div>
+    <div class="live-stat-lbl">Processed</div>
+  </div>
+  <div class="live-stat">
+    <div class="live-stat-num" id="sFraud" style="color:#E24B4A">0</div>
+    <div class="live-stat-lbl">Fraud</div>
+  </div>
+  <div class="live-stat">
+    <div class="live-stat-num" id="sLegit">0</div>
+    <div class="live-stat-lbl">Legitimate</div>
+  </div>
+  <div class="live-stat">
+    <div class="live-stat-num" id="sRate">0%</div>
+    <div class="live-stat-lbl">Fraud Rate</div>
+  </div>
+  <div class="live-stat" id="stat5wrap">
+    <div class="live-stat-num" id="sFifth">&mdash;</div>
+    <div class="live-stat-lbl" id="sFifthLbl">&mdash;</div>
+  </div>
+</div>
+
+<!-- Main body: charts + feed -->
+<div class="live-body">
+
+  <!-- Charts column -->
+  <div class="live-charts-col">
+
+    <!-- Fraud rate line -->
+    <div class="live-card">
+      <div class="live-card-title"><span class="live-card-title-dot"></span>Fraud Rate % &mdash; Live Trend</div>
+      <div style="position:relative;height:160px;width:100%"><canvas id="rateChart"></canvas></div>
+    </div>
+
+    <!-- Two small charts -->
+    <div class="charts-grid-2">
+      <div class="live-card">
+        <div class="live-card-title"><span class="live-card-title-dot"></span>Fraud vs Legit</div>
+        <div style="position:relative;height:160px;width:100%"><canvas id="stackChart"></canvas></div>
+      </div>
+      <div class="live-card" id="chart3card">
+        <div class="live-card-title" id="chart3title"><span class="live-card-title-dot"></span>Prob Sparkline</div>
+        <div style="position:relative;height:160px;width:100%"><canvas id="chart3"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Live feed column -->
+  <div class="live-feed-col">
+    <div class="live-card" style="padding-bottom:0;overflow:hidden">
+      <div class="live-card-title"><span class="live-card-title-dot"></span>Live Transaction Feed</div>
+      <div class="feed-scroll" id="feedScroll">
+        <div style="text-align:center;padding:40px 0;color:var(--text-muted);font-size:0.9rem" id="feedEmpty">
+          Press Start to begin streaming
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Sri Lanka Live Map -->
+<div class="live-card" id="mapCard" style="margin-top:16px;display:none">
+  <div class="live-card-title">
+    <span class="live-card-title-dot"></span>
+    Sri Lanka &mdash; Live Transaction Map
+    <span class="map-legend" style="margin-left:auto">
+      <span><span class="map-legend-dot" style="background:#E24B4A"></span>Fraud</span>
+      <span><span class="map-legend-dot" style="background:#1D9E75"></span>Safe</span>
+    </span>
+  </div>
+  <div id="lkMap"></div>
+</div>
+
+<!-- ═══════════════════════════════════════ END LIVE MONITOR ═══════ -->
+
+<div style="margin-bottom:20px;margin-top:30px">
     <h3 style="font-family:'Orbitron',sans-serif;font-size:0.9rem;color:var(--text-secondary);letter-spacing:3px">FRAUD DETECTION MODULES</h3>
 </div>
 <div class="module-grid">
@@ -106,5 +537,319 @@
         </div>
     </a>
 </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let currentTab = 'monitor';
+let es = null, delay = 0.5;
+let totalFraud = 0, totalProcessed = 0;
+let rateChart, stackChart, chart3;
+let rateLabels=[], rateData=[], fraudArr=[], legitArr=[], probArr=[], probLabels=[];
+let riskCounts={LOW:0,MEDIUM:0,HIGH:0,CRITICAL:0};
+const MAX_FEED = 120;
+
+// ── Sri Lanka Map ─────────────────────────────────────────────────
+const CITY_COORDS = {
+  'Colombo':       [6.9271, 79.8612],
+  'Negombo':       [7.2008, 79.8380],
+  'Gampaha':       [7.0906, 79.9993],
+  'Moratuwa':      [6.7729, 79.8817],
+  'Panadura':      [6.7134, 79.9019],
+  'Horana':        [6.7165, 80.0611],
+  'Kalutara':      [6.5854, 79.9607],
+  'Avissawella':   [6.9571, 80.1986],
+  'Kandy':         [7.2906, 80.6337],
+  'Nuwara Eliya':  [6.9497, 80.7891],
+  'Matale':        [7.4720, 80.6234],
+  'Dambulla':      [7.8675, 80.6517],
+  'Sigiriya':      [7.9570, 80.7603],
+  'Nawalapitiya':  [7.0498, 80.5412],
+  'Gampola':       [7.1651, 80.5740],
+  'Hatton':        [6.8936, 80.5952],
+  'Galewela':      [7.7499, 80.6264],
+  'Galle':         [6.0535, 80.2210],
+  'Matara':        [5.9549, 80.5550],
+  'Hambantota':    [6.1241, 81.1185],
+  'Weligama':      [5.9749, 80.4290],
+  'Ambalangoda':   [6.2330, 80.0563],
+  'Hikkaduwa':     [6.1395, 80.1060],
+  'Tangalle':      [6.0221, 80.7968],
+  'Tissamaharama': [6.2874, 81.2874],
+  'Kataragama':    [6.4119, 81.3360],
+  'Dickwella':     [5.9754, 80.6756],
+  'Jaffna':        [9.6615, 80.0255],
+  'Vavuniya':      [8.7514, 80.4972],
+  'Kilinochchi':   [9.3803, 80.4031],
+  'Mannar':        [8.9742, 79.9054],
+  'Mullaitivu':    [9.2671, 80.8130],
+  'Trincomalee':   [8.5874, 81.2152],
+  'Batticaloa':    [7.7170, 81.6924],
+  'Ampara':        [7.2983, 81.6747],
+  'Kalmunai':      [7.4148, 81.8230],
+  'Akkaraipattu':  [7.2169, 81.8385],
+  'Kurunegala':    [7.4818, 80.3609],
+  'Puttalam':      [8.0362, 79.8283],
+  'Chilaw':        [7.5767, 79.7947],
+  'Kuliyapitiya':  [7.4681, 80.0411],
+  'Nikaweratiya':  [7.7255, 80.1179],
+  'Maho':          [7.9023, 80.2519],
+  'Wariyapola':    [7.5875, 80.1686],
+  'Alawwa':        [7.3253, 80.2499],
+  'Ratnapura':     [6.6828, 80.3992],
+  'Kegalle':       [7.2517, 80.3464],
+  'Embilipitiya':  [6.3426, 80.8413],
+  'Rambukkana':    [7.3317, 80.4003],
+  'Mawanella':     [7.2529, 80.4517],
+  'Badulla':       [6.9895, 81.0557],
+  'Monaragala':    [6.8723, 81.3503],
+  'Bandarawela':   [6.8317, 80.9878],
+  'Haputale':      [6.7670, 80.9547],
+  'Ella':          [6.8667, 81.0467],
+  'Welimada':      [6.9087, 80.9145],
+  'Wellawaya':     [6.7334, 81.1049],
+  'Anuradhapura':  [8.3114, 80.4037],
+  'Polonnaruwa':   [7.9403, 81.0188],
+  'Kekirawa':      [8.0356, 80.5897],
+  'Mahiyanganaya': [7.3327, 81.0026],
+};
+let lkMap = null, mapMarkers = [];
+
+function initMap() {
+  if (lkMap) { lkMap.invalidateSize(); return; }
+  document.getElementById('mapCard').style.display = 'block';
+  lkMap = L.map('lkMap', {
+    center: [7.8731, 80.7718],
+    zoom: 7,
+    zoomControl: true,
+    attributionControl: false,
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd', maxZoom: 18
+  }).addTo(lkMap);
+  L.control.attribution({ prefix: false }).addTo(lkMap);
+}
+
+function addMapPin(city, isFraud) {
+  if (!lkMap || !city) return;
+  const coords = CITY_COORDS[city];
+  if (!coords) return;
+  const cls   = isFraud ? 'pin-fraud' : 'pin-safe';
+  const icon  = L.divIcon({
+    className: '',
+    html: '<div class="map-pin '+cls+'"><div class="map-dot"></div><div class="map-ring"></div></div>',
+    iconSize: [16, 16], iconAnchor: [8, 8],
+  });
+  const m = L.marker(coords, { icon, zIndexOffset: isFraud ? 1000 : 0 }).addTo(lkMap);
+  mapMarkers.push(m);
+  setTimeout(function(){ if(lkMap) lkMap.removeLayer(m); mapMarkers = mapMarkers.filter(function(x){return x!==m;}); }, 6000);
+  if (mapMarkers.length > 80) { lkMap.removeLayer(mapMarkers.shift()); }
+}
+
+// ── Tab ──────────────────────────────────────────────────────────
+function switchTab(tab) {
+  if (es) stopStream();
+  currentTab = tab;
+  document.querySelectorAll('.live-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'pipeline') {
+    document.getElementById('sFifthLbl').textContent = 'Avg ms';
+    document.getElementById('sFifth').textContent = '\u2014';
+    document.getElementById('chart3title').innerHTML = '<span class="live-card-title-dot"></span>Risk Distribution';
+  } else {
+    document.getElementById('sFifthLbl').textContent = '\u2014';
+    document.getElementById('sFifth').textContent = '\u2014';
+    document.getElementById('chart3title').innerHTML = '<span class="live-card-title-dot"></span>Prob Sparkline';
+  }
+  resetUI();
+  rebuildCharts();
+}
+
+// ── Speed ─────────────────────────────────────────────────────────
+function setSpeed(el) {
+  document.querySelectorAll('.speed-chip').forEach(function(c){ c.classList.remove('active'); });
+  el.classList.add('active');
+  delay = parseFloat(el.dataset.d);
+}
+
+// ── Reset ─────────────────────────────────────────────────────────
+function resetUI() {
+  totalFraud = 0; totalProcessed = 0;
+  rateLabels=[]; rateData=[]; fraudArr=[]; legitArr=[]; probArr=[]; probLabels=[];
+  riskCounts={LOW:0,MEDIUM:0,HIGH:0,CRITICAL:0};
+  ['sTotal','sFraud','sLegit'].forEach(function(id){ document.getElementById(id).textContent = '0'; });
+  document.getElementById('sRate').textContent = '0%';
+  document.getElementById('sFifth').textContent = '\u2014';
+  document.getElementById('feedScroll').innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-muted);font-size:0.9rem">Press Start to begin streaming</div>';
+  setStatus('idle', 'Ready \u2014 select speed and press Start');
+}
+
+// ── Charts ────────────────────────────────────────────────────────
+function rebuildCharts() {
+  const tick = 'rgba(255,255,255,0.65)', grid = 'rgba(255,255,255,0.06)';
+  if (rateChart)  rateChart.destroy();
+  if (stackChart) stackChart.destroy();
+  if (chart3)     chart3.destroy();
+
+  rateChart = new Chart(document.getElementById('rateChart'), {
+    type: 'line',
+    data: { labels: rateLabels, datasets: [{
+      data: rateData, label: 'Fraud Rate %',
+      borderColor: '#E24B4A', backgroundColor: 'rgba(226,75,74,0.1)',
+      fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
+    }]},
+    options: { animation:false, responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{display:false}, y:{min:0,max:100,ticks:{color:tick,callback:function(v){return v+'%';}},grid:{color:grid}} } }
+  });
+
+  stackChart = new Chart(document.getElementById('stackChart'), {
+    type: 'line',
+    data: { labels: rateLabels, datasets: [
+      { data: fraudArr, label:'Fraud', borderColor:'#E24B4A', backgroundColor:'rgba(226,75,74,0.12)', fill:true, tension:0.3, pointRadius:0, borderWidth:2 },
+      { data: legitArr, label:'Legit', borderColor:'#1D9E75', backgroundColor:'rgba(29,158,117,0.12)', fill:true, tension:0.3, pointRadius:0, borderWidth:2 },
+    ]},
+    options: { animation:false, responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{color:tick,boxWidth:10,padding:8} } },
+      scales:{ x:{display:false}, y:{ticks:{color:tick},grid:{color:grid}} } }
+  });
+
+  if (currentTab === 'pipeline') {
+    chart3 = new Chart(document.getElementById('chart3'), {
+      type: 'doughnut',
+      data: { labels:['LOW','MEDIUM','HIGH','CRITICAL'],
+        datasets:[{data:[0,0,0,0], backgroundColor:['rgba(29,158,117,0.7)','rgba(239,159,39,0.7)','rgba(255,100,50,0.7)','rgba(226,75,74,0.85)'], borderWidth:0}]},
+      options: { animation:false, responsive:true, maintainAspectRatio:false, cutout:'58%',
+        plugins:{ legend:{position:'bottom',labels:{color:tick,boxWidth:10,padding:8,font:{size:10}}} } }
+    });
+  } else {
+    chart3 = new Chart(document.getElementById('chart3'), {
+      type: 'bar',
+      data: { labels: probLabels, datasets:[{
+        data: probArr, backgroundColor: probArr.map(function(v){return v>50?'rgba(226,75,74,0.75)':'rgba(29,158,117,0.6)';}),
+        borderWidth:0, borderRadius:2
+      }]},
+      options: { animation:false, responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{ x:{display:false}, y:{min:0,max:100,ticks:{color:tick,callback:function(v){return v+'%';}},grid:{color:grid}} } }
+    });
+  }
+}
+
+function updateCharts(num, fraud, total, probRaw, risk) {
+  if (num % 5 === 0) {
+    var lbl = String(num);
+    rateLabels.push(lbl); fraudArr.push(fraud); legitArr.push(total-fraud);
+    rateData.push(total>0 ? Math.round(fraud/total*100) : 0);
+    if (rateLabels.length > 100) { rateLabels.shift(); rateData.shift(); fraudArr.shift(); legitArr.shift(); }
+    rateChart.update('none'); stackChart.update('none');
+  }
+  if (currentTab === 'pipeline') {
+    riskCounts[risk] = (riskCounts[risk]||0)+1;
+    chart3.data.datasets[0].data = [riskCounts.LOW,riskCounts.MEDIUM,riskCounts.HIGH,riskCounts.CRITICAL];
+    chart3.update('none');
+  } else {
+    probLabels.push(String(num)); probArr.push(probRaw);
+    if (probLabels.length > 50) { probLabels.shift(); probArr.shift(); }
+    chart3.data.labels = probLabels;
+    chart3.data.datasets[0].data = probArr;
+    chart3.data.datasets[0].backgroundColor = probArr.map(function(v){return v>50?'rgba(226,75,74,0.75)':'rgba(29,158,117,0.6)';});
+    chart3.update('none');
+  }
+}
+
+// ── Status ────────────────────────────────────────────────────────
+function setStatus(state, msg) {
+  var dot  = document.getElementById('statusDot');
+  var text = document.getElementById('statusText');
+  dot.className  = 'status-dot ' + state;
+  text.className = 'status-text ' + (state==='live'?'live':state==='error'?'error':'');
+  text.textContent = msg;
+}
+
+// ── Feed row ──────────────────────────────────────────────────────
+function addFeedRow(r) {
+  var scroll = document.getElementById('feedScroll');
+  var empty  = scroll.querySelector('div[style]');
+  if (empty) scroll.innerHTML = '';
+  if (scroll.childElementCount >= MAX_FEED) scroll.lastElementChild?.remove();
+
+  var div = document.createElement('div');
+  div.className = 'feed-row';
+  var isFraud = r.is_fraud;
+  var amt     = r.amount;
+  var bank    = r.bank;
+  var prob    = r.prob || r.risk || '';
+  var badge   = r.status || r.decision || (isFraud ? 'FRAUD' : 'SAFE');
+
+  div.innerHTML =
+    '<div class="feed-meta">' +
+      '<span class="feed-num">#'+r.num+'</span>' +
+      '<span class="feed-time">'+r.time+'</span>' +
+    '</div>' +
+    '<div class="feed-meta">' +
+      '<span class="feed-bank">'+bank+'</span>' +
+      '<span class="feed-amt">'+amt+'</span>' +
+    '</div>' +
+    '<span class="feed-badge '+(isFraud?'f':'s')+'">'+badge+'</span>' +
+    '<span class="feed-prob" style="color:'+(isFraud?'#E24B4A':'var(--accent)')+'">'+prob+'</span>';
+  scroll.prepend(div);
+}
+
+// ── Start / Stop ──────────────────────────────────────────────────
+function startStream() {
+  if (es) es.close();
+  resetUI();
+  rebuildCharts();
+
+  document.getElementById('btnStart').style.display = 'none';
+  document.getElementById('btnStop').style.display  = 'flex';
+  document.getElementById('dot-' + currentTab).classList.add('live');
+  setStatus('live', 'Streaming ' + (currentTab==='monitor'?'live transactions':'AI pipeline') + '...');
+  initMap();
+
+  var url = currentTab === 'monitor'
+    ? '/dashboard/monitor/stream?delay='+delay
+    : '/dashboard/pipeline/stream?delay='+delay;
+
+  es = new EventSource(url);
+  es.onmessage = function(e) {
+    var r = JSON.parse(e.data);
+    if (r.error) { stopStream('Error: ' + r.error); return; }
+
+    totalProcessed = r.num; totalFraud = r.fraud_count;
+    var rate = totalProcessed > 0 ? Math.round(totalFraud/totalProcessed*100) : 0;
+
+    document.getElementById('sTotal').textContent = totalProcessed;
+    document.getElementById('sFraud').textContent = totalFraud;
+    document.getElementById('sLegit').textContent = totalProcessed - totalFraud;
+    document.getElementById('sRate').textContent  = rate + '%';
+    if (currentTab === 'pipeline' && r.avg_ms !== undefined)
+      document.getElementById('sFifth').textContent = r.avg_ms + 'ms';
+
+    document.getElementById('txnCounter').textContent = '#' + r.num;
+    setStatus('live', 'Streaming \u2014 ' + rate + '% fraud rate');
+
+    addFeedRow(r);
+    updateCharts(r.num, totalFraud, totalProcessed, r.prob_raw || 0, r.risk || 'LOW');
+    addMapPin(r.city, r.is_fraud);
+  };
+  es.onerror = function() { stopStream('Stream connection lost'); };
+}
+
+function stopStream(msg) {
+  if (es) { es.close(); es = null; }
+  document.getElementById('btnStart').style.display = 'flex';
+  document.getElementById('btnStop').style.display  = 'none';
+  document.getElementById('dot-monitor').classList.remove('live');
+  document.getElementById('dot-pipeline').classList.remove('live');
+  var txt = msg || 'Stopped \u2014 ' + totalProcessed + ' transactions, ' + totalFraud + ' fraud';
+  setStatus(msg && msg.startsWith('Error') ? 'error' : 'idle', txt);
+  document.getElementById('txnCounter').textContent = '';
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  switchTab('monitor');
+});
+</script>
 
 {% endblock %}
