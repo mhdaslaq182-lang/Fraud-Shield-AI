@@ -1636,3 +1636,252 @@ footer {
     .mobile-theme { display: flex !important; }
     .navbar { height: auto !important; padding: 12px 20px !important; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PWA — Bottom Nav + Mobile Polish
+   Added for Progressive Web App support.
+═══════════════════════════════════════════════════════════════ */
+
+/* Bottom Nav: hidden on desktop, shown on mobile for authenticated users */
+.bottom-nav {
+    display: none;
+    position: fixed;
+    left: 0; right: 0;
+    bottom: 0;
+    z-index: 998;
+    background: rgba(255, 255, 255, 0.96);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border, rgba(29, 158, 117, 0.18));
+    box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.08);
+    /* Safe-area inset for iPhone notch / home-indicator */
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom)) 4px;
+    justify-content: space-around;
+    align-items: stretch;
+}
+
+[data-theme="dark"] .bottom-nav {
+    background: rgba(13, 27, 42, 0.96);
+    border-top: 1px solid rgba(29, 158, 117, 0.25);
+}
+
+.bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 2px;
+    text-decoration: none;
+    color: var(--text-secondary, #6b7280) !important;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border-radius: 10px;
+    min-height: 52px;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.bottom-nav-item:active {
+    background: var(--accent-dim, rgba(29, 158, 117, 0.1));
+}
+
+.bottom-nav-item.active {
+    color: var(--accent, #1D9E75) !important;
+}
+
+.bottom-nav-item.active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 28px;
+    height: 3px;
+    background: var(--accent, #1D9E75);
+    border-radius: 0 0 3px 3px;
+}
+
+.bottom-nav-label {
+    line-height: 1;
+}
+
+/* Show bottom nav only on mobile / tablet portrait */
+@media (max-width: 768px) {
+    .bottom-nav {
+        display: flex;
+    }
+    /* Push main content up so it isn't covered by the nav */
+    main.main-content {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    }
+    /* Lift the floating chatbot above the bottom nav */
+    #chatWidget {
+        bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    }
+}
+
+/* ── Mobile polish for fraud pages ─────────────────────────────── */
+@media (max-width: 768px) {
+    /* Wide tables → horizontal scroll, sticky first column */
+    .table-responsive,
+    table.data-table,
+    .fraud-table-wrap {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        max-width: 100%;
+    }
+    table {
+        font-size: 0.78rem !important;
+    }
+    table th, table td {
+        padding: 8px 10px !important;
+        white-space: nowrap;
+    }
+
+    /* Plotly charts: force them to fit container width */
+    .js-plotly-plot, .plotly-graph-div {
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
+
+    /* Bigger touch targets for form inputs */
+    input[type="text"], input[type="number"], input[type="email"],
+    input[type="password"], select, textarea {
+        font-size: 16px !important; /* prevents iOS zoom-on-focus */
+        min-height: 44px;
+    }
+    button, .btn {
+        min-height: 44px;
+    }
+
+    /* Fraud-form 18-field layouts: full width, no horizontal scroll */
+    .fraud-form, .check-form, form .form-row {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+}
+
+/* iOS standalone PWA: respect notch / dynamic island */
+@supports (padding: env(safe-area-inset-top)) {
+    body {
+        padding-top: env(safe-area-inset-top);
+    }
+}
+
+/* When launched as installed PWA, hide elements that don't make sense */
+@media (display-mode: standalone) {
+    /* Hide the footer's giant "related solutions" marketing block on installed app */
+    footer .footer-section:first-child,
+    footer .footer-section:nth-child(2) {
+        display: none;
+    }
+    footer {
+        padding: 16px !important;
+        margin-top: 20px !important;
+    }
+    /* Hide register/login footer CTA buttons in standalone mode */
+    .cta-buttons { display: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PWA — Install banner + Pull-to-refresh indicator
+═══════════════════════════════════════════════════════════════ */
+
+/* Floating install banner (mobile, above bottom nav) */
+.pwa-install-banner {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    z-index: 1001;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border, rgba(29,158,117,0.25));
+    border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+    animation: slideUp 0.25s ease-out;
+}
+
+[data-theme="dark"] .pwa-install-banner {
+    background: #0d1b2a;
+    border-color: rgba(29,158,117,0.35);
+}
+
+.pwa-install-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--accent, #1D9E75);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+
+.pwa-install-text {
+    flex: 1;
+    display: flex; flex-direction: column;
+    line-height: 1.25;
+    min-width: 0;
+}
+.pwa-install-text strong { font-size: 0.9rem; color: var(--text-primary); }
+.pwa-install-text span   { font-size: 0.75rem; color: var(--text-secondary); }
+
+.pwa-install-cta {
+    padding: 8px 16px;
+    background: var(--accent, #1D9E75);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    min-height: 38px;
+    white-space: nowrap;
+}
+
+.pwa-install-close {
+    background: none; border: none;
+    color: var(--text-secondary);
+    font-size: 1.4rem; line-height: 1;
+    cursor: pointer;
+    padding: 4px 6px;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Hide install banner on desktop */
+@media (min-width: 769px) {
+    .pwa-install-banner { display: none !important; }
+}
+
+/* Pull-to-refresh indicator */
+.ptr-indicator {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(-60px);
+    z-index: 9998;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border, rgba(29,158,117,0.25));
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    pointer-events: none;
+}
+
+[data-theme="dark"] .ptr-indicator {
+    background: #0d1b2a;
+}
+
+/* PTR is mobile-only */
+@media (min-width: 769px) {
+    .ptr-indicator { display: none !important; }
+}

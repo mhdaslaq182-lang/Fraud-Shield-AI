@@ -1,9 +1,12 @@
 {% extends "fraud/_layout.html" %}
 {% block title %}Alert Log{% endblock %}
 {% block fraud_content %}
-<div class="fraud-header">
-  <div class="fraud-title">Fraud Alert Log</div>
-  <div class="fraud-sub">All fraud events detected across all modules</div>
+<div class="fraud-header" style="display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div class="fraud-title">Fraud Alert Log</div>
+    <div class="fraud-sub">All fraud events detected across all modules</div>
+  </div>
+  <button type="button" onclick="generateAlertsPDF()" style="padding:10px 20px;background:linear-gradient(135deg, var(--accent), #0F6E56);border:1px solid rgba(29,158,117,0.3);color:white;border-radius:10px;font-weight:600;cursor:pointer;font-size:0.9rem;white-space:nowrap">📄 Export PDF</button>
 </div>
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
@@ -23,13 +26,16 @@
 {% endblock %}
 {% block extra_js %}
 <script>
+let currentAlerts = [];
+
 async function loadAlerts(){
   const res=await fetch('/fraud/alerts/data');
   const d=await res.json();
-  document.getElementById('totalAlerts').textContent=d.total;
+  currentAlerts = d.alerts || [];
+  document.getElementById('totalAlerts').textContent=currentAlerts.length;
   const c=document.getElementById('alertsContainer');
-  if(d.alerts.length===0){c.innerHTML='<div class="alert-empty">No fraud alerts — system is clean.</div>';return;}
-  c.innerHTML=d.alerts.map(a=>`
+  if(currentAlerts.length===0){c.innerHTML='<div class="alert-empty">No fraud alerts — system is clean.</div>';return;}
+  c.innerHTML=currentAlerts.map(a=>`
     <div class="alert-row">
       <div class="alert-type">${a.fraud_type||'Unknown'}</div>
       <div class="alert-time">${(a.timestamp||'').replace('T',' ').slice(0,19)}</div>
@@ -38,6 +44,39 @@ async function loadAlerts(){
       ${a.amount_lkr!==undefined?`<div style="font-size:0.85rem;color:var(--text-secondary)">Rs. ${parseFloat(a.amount_lkr).toLocaleString()}</div>`:''}
     </div>`).join('');
 }
+
+async function generateAlertsPDF(){
+  if(currentAlerts.length===0){
+    alert('No alerts to export');
+    return;
+  }
+  
+  try{
+    const res=await fetch('/fraud/alerts-summary/pdf',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        alerts: currentAlerts,
+        time_period: 'Last 30 Days'
+      })
+    });
+    
+    if(!res.ok) throw new Error('PDF generation failed');
+    
+    const blob=await res.blob();
+    const url=window.URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`alerts_summary_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }catch(e){
+    alert('PDF generation failed: '+e);
+  }
+}
+
 async function clearAlerts(){
   if(!confirm('Clear all alerts?'))return;
   await fetch('/fraud/alerts/clear',{method:'POST'});

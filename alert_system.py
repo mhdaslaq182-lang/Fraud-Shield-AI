@@ -76,9 +76,31 @@ Email Risk     : {transaction.get('email_risk', 0):.2f}
         return False
 
 
+def _send_push_alert(transaction: dict, prob: float, fraud_type: str):
+    """Best-effort Web Push broadcast. Only runs inside an active Flask app context."""
+    try:
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "flask_app"))
+        from flask import current_app  # noqa: F401  (will raise if no app ctx)
+        from push_notify import broadcast_fraud_alert
+        amount = transaction.get("amount_lkr", transaction.get("amount", 0)) or 0
+        result = broadcast_fraud_alert(
+            prob       = prob,
+            amount_lkr = amount,
+            fraud_type = fraud_type,
+            txn_id     = transaction.get("transaction_id"),
+        )
+        print(f"  📱 Push: {result['sent']} sent, {result['failed']} failed, "
+              f"{result['expired_deleted']} expired")
+    except Exception as e:
+        # No Flask app context, no subscriptions, or push disabled — silently skip
+        print(f"  ⓘ  Push skipped: {e}")
+
+
 def trigger_alert(transaction: dict, prob: float,
                   fraud_type: str = "Unknown",
-                  send_email: bool = False):
+                  send_email: bool = False,
+                  send_push:  bool = True):
     amount = transaction.get("amount_lkr",
              transaction.get("amount", 0)) or 0
     print(f"\n  🚨 FRAUD ALERT TRIGGERED")
@@ -88,6 +110,8 @@ def trigger_alert(transaction: dict, prob: float,
     log_alert(transaction, prob, fraud_type)
     if send_email:
         send_email_alert(transaction, prob, fraud_type)
+    if send_push:
+        _send_push_alert(transaction, prob, fraud_type)
 
 
 def show_alert_log():

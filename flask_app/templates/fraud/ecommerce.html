@@ -1,9 +1,12 @@
 {% extends "fraud/_layout.html" %}
 {% block title %}E-Commerce Fraud Detection{% endblock %}
 {% block fraud_content %}
-<div class="fraud-header">
-  <div class="fraud-title">E-Commerce Fraud Detection</div>
-  <div class="fraud-sub">Daraz.lk · Kapruka · Takas.lk · Ikman.lk</div>
+<div class="fraud-header" style="display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div class="fraud-title">E-Commerce Fraud Detection</div>
+    <div class="fraud-sub">Daraz.lk · Kapruka · Takas.lk · Ikman.lk</div>
+  </div>
+  <button type="button" class="btn-analyze" id="pdfBtn" onclick="generatePDF()" style="display:none;padding:10px 20px;background:linear-gradient(135deg, var(--accent), #0F6E56);border:1px solid rgba(29,158,117,0.3);color:white;border-radius:10px;font-weight:600;cursor:pointer;font-size:0.9rem;white-space:nowrap">📄 Download PDF</button>
 </div>
 
 <div class="input-grid">
@@ -80,6 +83,63 @@ function showResult(d){
   const p=Math.round(d.prob*100); const c=p>65?'#E24B4A':p>40?'#EF9F27':'#1D9E75';
   const g=document.getElementById('gauge'); g.style.width=p+'%'; g.style.background=`linear-gradient(90deg,#1D9E75,${c})`;
   rc.scrollIntoView({behavior:'smooth',block:'nearest'});
+  
+  // Show PDF button
+  document.getElementById('pdfBtn').style.display='inline-block';
+  // Store current data for PDF generation
+  window.currentAnalysisData = d;
+  window.currentTransactionData = {
+    order_amount:      +document.getElementById('order_amount').value,
+    items_count:       +document.getElementById('items_count').value,
+    hour:              +document.getElementById('hour').value,
+    is_new_customer:   +document.getElementById('is_new_customer').value,
+    failed_payments:   +document.getElementById('failed_payments').value,
+    different_address: +document.getElementById('different_address').value,
+    device_changes:    +document.getElementById('device_changes').value,
+    return_rate:       +document.getElementById('return_rate').value,
+    account_age_days:  +document.getElementById('account_age_days').value,
+    promo_abuse:       +document.getElementById('promo_abuse').value,
+  };
+}
+
+async function generatePDF() {
+  if (!window.currentTransactionData || !window.currentAnalysisData) {
+    alert('Please analyze an order first');
+    return;
+  }
+  
+  const btn = document.getElementById('pdfBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generating PDF...';
+  
+  try {
+    const payload = window.currentTransactionData;
+    const res = await fetch('/fraud/ecommerce/pdf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    
+    if (!res.ok) {
+      throw new Error('PDF generation failed');
+    }
+    
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ecommerce_fraud_report_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+  } catch(e) {
+    alert('PDF generation failed: ' + e);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '📄 Download PDF';
+  }
 }
 </script>
 {% endblock %}

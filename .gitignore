@@ -42,3 +42,4 @@ flask_app/face_encodings/
 # Certificates
 flask_app/cert.pem
 flask_app/key.pem
+flask_app/vapid_private.pem

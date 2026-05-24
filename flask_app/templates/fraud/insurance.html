@@ -1,9 +1,12 @@
 {% extends "fraud/_layout.html" %}
 {% block title %}Insurance Fraud Detection{% endblock %}
 {% block fraud_content %}
-<div class="fraud-header">
-  <div class="fraud-title">Insurance Fraud Detection</div>
-  <div class="fraud-sub">Ceylinco · AIA Lanka · Allianz Lanka · HNB Assurance</div>
+<div class="fraud-header" style="display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div class="fraud-title">Insurance Fraud Detection</div>
+    <div class="fraud-sub">Ceylinco · AIA Lanka · Allianz Lanka · HNB Assurance</div>
+  </div>
+  <button type="button" class="btn-analyze" id="pdfBtn" onclick="generatePDF()" style="display:none;padding:10px 20px;background:linear-gradient(135deg, var(--accent), #0F6E56);border:1px solid rgba(29,158,117,0.3);color:white;border-radius:10px;font-weight:600;cursor:pointer;font-size:0.9rem;white-space:nowrap">📄 Download PDF</button>
 </div>
 
 <div class="input-grid">
@@ -60,6 +63,61 @@ function showResult(d){
   const pct=Math.round(d.prob*100);const c=pct>65?'#E24B4A':pct>40?'#EF9F27':'#1D9E75';
   const g=document.getElementById('gauge');g.style.width=pct+'%';g.style.background=`linear-gradient(90deg,#1D9E75,${c})`;
   rc.scrollIntoView({behavior:'smooth',block:'nearest'});
+  
+  // Show PDF button
+  document.getElementById('pdfBtn').style.display='inline-block';
+  // Store current data for PDF generation
+  window.currentAnalysisData = d;
+  window.currentTransactionData = {
+    claim_amount:+document.getElementById('claim_amount').value,
+    policy_age_days:+document.getElementById('policy_age_days').value,
+    previous_claims:+document.getElementById('previous_claims').value,
+    documents_missing:+document.getElementById('documents_missing').value,
+    claim_speed_days:+document.getElementById('claim_speed_days').value,
+    witness_count:+document.getElementById('witness_count').value,
+    injury_severity:+document.getElementById('injury_severity').value,
+    lawyer_involved:+document.getElementById('lawyer_involved').value,
+  };
+}
+
+async function generatePDF() {
+  if (!window.currentTransactionData || !window.currentAnalysisData) {
+    alert('Please analyze a claim first');
+    return;
+  }
+  
+  const btn = document.getElementById('pdfBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generating PDF...';
+  
+  try {
+    const payload = window.currentTransactionData;
+    const res = await fetch('/fraud/insurance/pdf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    
+    if (!res.ok) {
+      throw new Error('PDF generation failed');
+    }
+    
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `insurance_fraud_report_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+  } catch(e) {
+    alert('PDF generation failed: ' + e);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '📄 Download PDF';
+  }
 }
 </script>
 {% endblock %}

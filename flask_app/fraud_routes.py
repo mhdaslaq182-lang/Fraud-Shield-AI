@@ -8,6 +8,7 @@ from flask_login import login_required
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from features import engineer_features, FEATURES
 from alert_system import send_email_alert
+from pdf_generator import PDFGenerator
 
 fraud = Blueprint("fraud", __name__)
 BASE  = os.path.join(os.path.dirname(__file__), "..")
@@ -83,6 +84,49 @@ def banking_predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@fraud.route("/fraud/banking/pdf", methods=["POST"])
+@login_required
+def banking_pdf():
+    """Generate PDF report for banking fraud analysis"""
+    try:
+        d = request.get_json()
+        txn = {
+            "amount_lkr":    float(d.get("amount_lkr", 15000)),
+            "hour":          int(d.get("hour", 14)),
+            "frequency":     int(d.get("frequency", 3)),
+            "distance_km":   float(d.get("distance_km", 5)),
+            "failed_logins": int(d.get("failed_logins", 0)),
+            "new_device":    int(d.get("new_device", 0)),
+            "account_age":   int(d.get("account_age", 365)),
+            "countries":     int(d.get("countries", 1)),
+            "velocity_24h":  int(d.get("velocity_24h", 2)),
+            "email_risk":    float(d.get("email_risk", 0.1)),
+            "balance_lkr":   float(d.get("balance_lkr", 500000)),
+            "is_weekend":    int(d.get("is_weekend", 0)),
+        }
+        
+        m    = _load("random_forest")
+        df   = engineer_features(pd.DataFrame([txn]))
+        prob = float(m.predict_proba(df[FEATURES])[0][1])
+        
+        risk_data = {
+            "prob": prob,
+            "risk": _risk(prob),
+            "decision": "BLOCKED" if prob > 0.5 else "APPROVED"
+        }
+        
+        pdf_gen = PDFGenerator()
+        pdf_buffer = pdf_gen.generate_fraud_report(txn, risk_data, "Banking Fraud")
+        
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"banking_fraud_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ── E-COMMERCE ────────────────────────────────────────────────────────────────
 
 @fraud.route("/fraud/ecommerce")
@@ -114,6 +158,48 @@ def ecommerce_predict():
         if prob > 0.5:
             _log(d, prob, "E-Commerce Fraud")
         return _ok(prob)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@fraud.route("/fraud/ecommerce/pdf", methods=["POST"])
+@login_required
+def ecommerce_pdf():
+    """Generate PDF report for ecommerce fraud analysis"""
+    try:
+        d = request.get_json()
+        txn = {
+            "order_amount":      float(d.get("order_amount", 2500)),
+            "items_count":       int(d.get("items_count", 2)),
+            "hour":              int(d.get("hour", 14)),
+            "is_new_customer":   int(d.get("is_new_customer", 0)),
+            "failed_payments":   int(d.get("failed_payments", 0)),
+            "different_address": int(d.get("different_address", 0)),
+            "device_changes":    int(d.get("device_changes", 0)),
+            "return_rate":       float(d.get("return_rate", 0.05)),
+            "account_age_days":  int(d.get("account_age_days", 200)),
+            "promo_abuse":       int(d.get("promo_abuse", 0)),
+        }
+        
+        m = _load("ecommerce_model")
+        if not m:
+            return jsonify({"error": "Model not found"}), 404
+        prob = float(m.predict_proba(pd.DataFrame([txn]))[0][1])
+        
+        risk_data = {
+            "prob": prob,
+            "risk": _risk(prob),
+            "decision": "BLOCKED" if prob > 0.5 else "APPROVED"
+        }
+        
+        pdf_gen = PDFGenerator()
+        pdf_buffer = pdf_gen.generate_fraud_report(txn, risk_data, "E-Commerce Fraud")
+        
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"ecommerce_fraud_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -149,6 +235,46 @@ def mobile_predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@fraud.route("/fraud/mobile/pdf", methods=["POST"])
+@login_required
+def mobile_pdf():
+    """Generate PDF report for mobile payment fraud analysis"""
+    try:
+        d = request.get_json()
+        txn = {
+            "amount_lkr":        float(d.get("amount_lkr", 500)),
+            "hour":              int(d.get("hour", 12)),
+            "top_up_frequency":  int(d.get("top_up_frequency", 3)),
+            "sim_age_days":      int(d.get("sim_age_days", 365)),
+            "is_roaming":        int(d.get("is_roaming", 0)),
+            "pin_attempts":      int(d.get("pin_attempts", 0)),
+            "receiver_known":    int(d.get("receiver_known", 1)),
+            "transaction_speed": float(d.get("transaction_speed", 2.0)),
+        }
+        
+        m = _load("mobile_payment_model")
+        if not m:
+            return jsonify({"error": "Model not found"}), 404
+        prob = float(m.predict_proba(pd.DataFrame([txn]))[0][1])
+        
+        risk_data = {
+            "prob": prob,
+            "risk": _risk(prob),
+            "decision": "BLOCKED" if prob > 0.5 else "APPROVED"
+        }
+        
+        pdf_gen = PDFGenerator()
+        pdf_buffer = pdf_gen.generate_fraud_report(txn, risk_data, "Mobile Payment Fraud")
+        
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"mobile_payment_fraud_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ── INSURANCE ─────────────────────────────────────────────────────────────────
 
 @fraud.route("/fraud/insurance")
@@ -178,6 +304,46 @@ def insurance_predict():
         if prob > 0.5:
             _log(d, prob, "Insurance Fraud")
         return _ok(prob)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@fraud.route("/fraud/insurance/pdf", methods=["POST"])
+@login_required
+def insurance_pdf():
+    """Generate PDF report for insurance fraud analysis"""
+    try:
+        d = request.get_json()
+        txn = {
+            "claim_amount":      float(d.get("claim_amount", 50000)),
+            "policy_age_days":   int(d.get("policy_age_days", 500)),
+            "previous_claims":   int(d.get("previous_claims", 0)),
+            "documents_missing": int(d.get("documents_missing", 0)),
+            "claim_speed_days":  int(d.get("claim_speed_days", 30)),
+            "witness_count":     int(d.get("witness_count", 1)),
+            "injury_severity":   float(d.get("injury_severity", 0.2)),
+            "lawyer_involved":   int(d.get("lawyer_involved", 0)),
+        }
+        
+        m = _load("insurance_model")
+        if not m:
+            return jsonify({"error": "Model not found"}), 404
+        prob = float(m.predict_proba(pd.DataFrame([txn]))[0][1])
+        
+        risk_data = {
+            "prob": prob,
+            "risk": _risk(prob),
+            "decision": "BLOCKED" if prob > 0.5 else "APPROVED"
+        }
+        
+        pdf_gen = PDFGenerator()
+        pdf_buffer = pdf_gen.generate_fraud_report(txn, risk_data, "Insurance Fraud")
+        
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"insurance_fraud_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -211,6 +377,47 @@ def loan_predict():
         if prob > 0.5:
             _log(d, prob, "Loan Fraud")
         return _ok(prob)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@fraud.route("/fraud/loan/pdf", methods=["POST"])
+@login_required
+def loan_pdf():
+    """Generate PDF report for loan fraud analysis"""
+    try:
+        d = request.get_json()
+        txn = {
+            "loan_amount":       float(d.get("loan_amount", 200000)),
+            "monthly_income":    float(d.get("monthly_income", 80000)),
+            "credit_score":      int(d.get("credit_score", 650)),
+            "employment_years":  int(d.get("employment_years", 5)),
+            "existing_loans":    int(d.get("existing_loans", 1)),
+            "age":               int(d.get("age", 35)),
+            "address_changes":   int(d.get("address_changes", 0)),
+            "doc_inconsistency": int(d.get("doc_inconsistency", 0)),
+            "multiple_apps":     int(d.get("multiple_apps", 0)),
+        }
+        
+        m = _load("online_loan_model")
+        if not m:
+            return jsonify({"error": "Model not found"}), 404
+        prob = float(m.predict_proba(pd.DataFrame([txn]))[0][1])
+        
+        risk_data = {
+            "prob": prob,
+            "risk": _risk(prob),
+            "decision": "BLOCKED" if prob > 0.5 else "APPROVED"
+        }
+        
+        pdf_gen = PDFGenerator()
+        pdf_buffer = pdf_gen.generate_fraud_report(txn, risk_data, "Loan Fraud")
+        
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"loan_fraud_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -451,6 +658,96 @@ def alerts_data():
                     alerts.append(json.loads(line.strip()))
                 except Exception:
                     pass
+    return jsonify({"total": len(alerts), "alerts": alerts[-50:]})
+
+# ── COMPREHENSIVE PDF REPORT ─────────────────────────────────────────────────────
+
+@fraud.route("/fraud/comprehensive-report/pdf", methods=["POST"])
+@login_required
+def comprehensive_report_pdf():
+    """Generate comprehensive PDF report with all system data"""
+    try:
+        d = request.get_json()
+        
+        # Gather all data from different sources
+        all_data = {}
+        
+        # Live Monitor Data
+        all_data['live_monitor'] = d.get('live_monitor', {
+            'Status': 'Active',
+            'Last Update': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'Transactions Monitored': d.get('total_transactions', 0),
+            'Fraud Detected': d.get('fraud_count', 0),
+            'System Health': 'Good'
+        })
+        
+        # Pipeline Data
+        all_data['pipeline'] = d.get('pipeline', {
+            'Total Processed': d.get('pipeline_total', 0),
+            'Processing Speed': f"{d.get('avg_processing_time', 0):.2f}ms",
+            'Fraud Rate': f"{d.get('fraud_rate', 0):.2f}%",
+            'Model Accuracy': f"{d.get('accuracy', 0):.2f}%"
+        })
+        
+        # Six Domains Data
+        all_data['banking'] = d.get('banking', {
+            'Total Transactions': d.get('banking_total', 0),
+            'Fraud Detected': d.get('banking_fraud', 0),
+            'Fraud Rate': f"{d.get('banking_rate', 0):.2f}%"
+        })
+        
+        all_data['ecommerce'] = d.get('ecommerce', {
+            'Total Orders': d.get('ecommerce_total', 0),
+            'Fraudulent Orders': d.get('ecommerce_fraud', 0),
+            'Fraud Rate': f"{d.get('ecommerce_rate', 0):.2f}%"
+        })
+        
+        all_data['mobile'] = d.get('mobile', {
+            'Total Payments': d.get('mobile_total', 0),
+            'Fraudulent Payments': d.get('mobile_fraud', 0),
+            'Fraud Rate': f"{d.get('mobile_rate', 0):.2f}%"
+        })
+        
+        all_data['insurance'] = d.get('insurance', {
+            'Total Claims': d.get('insurance_total', 0),
+            'Fraudulent Claims': d.get('insurance_fraud', 0),
+            'Fraud Rate': f"{d.get('insurance_rate', 0):.2f}%"
+        })
+        
+        all_data['loan'] = d.get('loan', {
+            'Total Applications': d.get('loan_total', 0),
+            'Fraudulent Applications': d.get('loan_fraud', 0),
+            'Fraud Rate': f"{d.get('loan_rate', 0):.2f}%"
+        })
+        
+        all_data['phishing'] = d.get('phishing', {
+            'Total Emails Analyzed': d.get('phishing_total', 0),
+            'Phishing Detected': d.get('phishing_fraud', 0),
+            'Detection Rate': f"{d.get('phishing_rate', 0):.2f}%"
+        })
+        
+        # Fraud Alerts
+        all_data['fraud_alerts'] = d.get('fraud_alerts', [])
+        
+        # Analytics
+        all_data['analytics'] = d.get('analytics', {
+            'Total Transactions Analyzed': d.get('analytics_total', 0),
+            'Overall Fraud Rate': f"{d.get('overall_fraud_rate', 0):.2f}%",
+            'True Positive Rate': f"{d.get('true_positive_rate', 0):.2f}%",
+            'False Positive Rate': f"{d.get('false_positive_rate', 0):.2f}%"
+        })
+        
+        pdf_gen = PDFGenerator()
+        pdf_buffer = pdf_gen.generate_comprehensive_report(all_data)
+        
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"comprehensive_fraud_statement_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     return jsonify({"alerts": list(reversed(alerts)), "total": len(alerts)})
 
 @fraud.route("/fraud/alerts/clear", methods=["POST"])
@@ -532,6 +829,71 @@ def upload_template():
     sample.to_csv(buf, index=False)
     buf.seek(0)
     return send_file(buf, mimetype="text/csv", as_attachment=True, download_name="bank_template.csv")
+
+# ── PDF GENERATION ROUTES ────────────────────────────────────────────────────────
+
+@fraud.route("/fraud/transaction-statement/pdf", methods=["POST"])
+@login_required
+def transaction_statement_pdf():
+    """Generate PDF transaction statement"""
+    try:
+        d = request.get_json()
+        transactions = d.get("transactions", [])
+        account_info = d.get("account_info", {})
+        
+        pdf_gen = PDFGenerator()
+        pdf_buffer = pdf_gen.generate_transaction_statement(transactions, account_info)
+        
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"transaction_statement_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@fraud.route("/fraud/alerts-summary/pdf", methods=["POST"])
+@login_required
+def alerts_summary_pdf():
+    """Generate PDF alerts summary"""
+    try:
+        d = request.get_json()
+        alerts = d.get("alerts", [])
+        time_period = d.get("time_period", "Last 30 Days")
+        
+        pdf_gen = PDFGenerator()
+        pdf_buffer = pdf_gen.generate_alerts_summary(alerts, time_period)
+        
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"alerts_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@fraud.route("/fraud/analytics-report/pdf", methods=["POST"])
+@login_required
+def analytics_report_pdf():
+    """Generate PDF analytics report"""
+    try:
+        d = request.get_json()
+        analytics = d.get("analytics", {})
+        charts_data = d.get("charts_data", None)
+        
+        pdf_gen = PDFGenerator()
+        pdf_buffer = pdf_gen.generate_analytics_report(analytics, charts_data)
+        
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=f"analytics_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ── API TESTER ────────────────────────────────────────────────────────────────
 

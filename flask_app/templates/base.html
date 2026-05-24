@@ -2,8 +2,32 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}AI Fraud Detection{% endblock %} | Sri Lanka</title>
+
+    <!-- ── PWA: Web App Manifest ── -->
+    <link rel="manifest" href="/manifest.json">
+    <!-- theme-color: progressive enhancement. Supported by Chrome/Edge/Safari/Samsung Internet
+         (status-bar color when installed as PWA). Firefox/Opera ignore it harmlessly. -->
+    <meta name="theme-color" content="#1D9E75" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1D9E75" media="(prefers-color-scheme: dark)">
+    <meta name="application-name" content="Fraud Shield AI">
+    <meta name="description" content="AI-powered banking fraud detection for Sri Lankan banks.">
+
+    <!-- ── PWA: iOS / Apple ── -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Fraud Shield">
+    <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png">
+
+    <!-- ── PWA: Favicons ── -->
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/images/icon-16.png">
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
+    <link rel="shortcut icon" href="/static/images/favicon.ico">
+
     <link rel="stylesheet" href="/static/css/style.css">
     {% block extra_css %}{% endblock %}
 </head>
@@ -92,6 +116,51 @@
 {% endwith %}
 {% block content %}{% endblock %}
 </main>
+
+{% if current_user.is_authenticated %}
+<!-- ── Floating Install Banner (shown when PWA install is available) ── -->
+<div id="pwaInstallBanner" class="pwa-install-banner" style="display:none" role="dialog" aria-label="Install app">
+    <div class="pwa-install-icon">
+        <span data-icon="download" data-size="20" data-color="#fff"></span>
+    </div>
+    <div class="pwa-install-text">
+        <strong>Install Fraud Shield</strong>
+        <span>Get the app on your home screen</span>
+    </div>
+    <button type="button" class="pwa-install-cta" onclick="triggerPWAInstall()">Install</button>
+    <button type="button" class="pwa-install-close" onclick="dismissPWAInstall()" aria-label="Dismiss">&times;</button>
+</div>
+
+<!-- ── Pull-to-refresh indicator (mobile only) ── -->
+<div id="ptrIndicator" class="ptr-indicator" aria-hidden="true">
+    <span data-icon="reload" data-size="20" data-color="#1D9E75"></span>
+</div>
+
+<!-- ── Mobile Bottom Nav (analyst quick-access) ─────────────────── -->
+<nav class="bottom-nav" aria-label="Quick navigation">
+    <a href="/dashboard" class="bottom-nav-item" data-nav="dashboard">
+        <span data-icon="dashboard" data-size="22"></span>
+        <span class="bottom-nav-label">Dashboard</span>
+    </a>
+    <a href="/fraud/banking" class="bottom-nav-item" data-nav="check">
+        <span data-icon="shield" data-size="22"></span>
+        <span class="bottom-nav-label">Check</span>
+    </a>
+    <a href="/fraud/alerts" class="bottom-nav-item" data-nav="alerts">
+        <span data-icon="alert" data-size="22"></span>
+        <span class="bottom-nav-label">Alerts</span>
+    </a>
+    <a href="/fraud/analytics" class="bottom-nav-item" data-nav="analytics">
+        <span data-icon="chart" data-size="22"></span>
+        <span class="bottom-nav-label">Analytics</span>
+    </a>
+    <a href="/profile" class="bottom-nav-item" data-nav="profile">
+        <span data-icon="user" data-size="22"></span>
+        <span class="bottom-nav-label">Profile</span>
+    </a>
+</nav>
+{% endif %}
+
 <footer>
     <div class="footer-container">
 
@@ -209,6 +278,124 @@
     </div>
 </footer>
 <script src="/static/js/icons.js"></script>
+
+<!-- ── PWA: Service Worker Registration + Install Prompt ─────────── -->
+<script>
+(function () {
+  // Highlight current bottom-nav item
+  try {
+    var path = window.location.pathname;
+    document.querySelectorAll('.bottom-nav-item').forEach(function (a) {
+      var href = a.getAttribute('href');
+      if (href && (path === href || path.indexOf(href) === 0)) {
+        a.classList.add('active');
+      }
+    });
+  } catch (e) {}
+
+  // Register the service worker (only over HTTPS or localhost)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(function (reg) {
+          // Listen for updates and apply silently after reload
+          reg.addEventListener('updatefound', function () {
+            var nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener('statechange', function () {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA] New version available — reload to update.');
+              }
+            });
+          });
+        })
+        .catch(function (err) { console.warn('[PWA] SW register failed:', err); });
+    });
+  }
+
+  // ── Install banner ──
+  var DISMISS_KEY = 'fs_install_dismissed';
+  function showInstallBanner () {
+    if (sessionStorage.getItem(DISMISS_KEY) === '1') return;
+    var b = document.getElementById('pwaInstallBanner');
+    if (b) b.style.display = 'flex';
+  }
+  window.dismissPWAInstall = function () {
+    sessionStorage.setItem(DISMISS_KEY, '1');
+    var b = document.getElementById('pwaInstallBanner');
+    if (b) b.style.display = 'none';
+  };
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    window.deferredPWAInstall = e;
+    showInstallBanner();
+  });
+
+  window.triggerPWAInstall = function () {
+    var ev = window.deferredPWAInstall;
+    if (!ev) return;
+    ev.prompt();
+    ev.userChoice.finally(function () {
+      window.deferredPWAInstall = null;
+      window.dismissPWAInstall();
+    });
+  };
+
+  window.addEventListener('appinstalled', function () {
+    window.dismissPWAInstall();
+    console.log('[PWA] App installed');
+  });
+
+  // ── Pull-to-refresh (mobile only, when scroll is at top) ──
+  (function ptr () {
+    var startY = 0, currentY = 0, pulling = false, triggered = false;
+    var THRESHOLD = 80;
+    var indicator = document.getElementById('ptrIndicator');
+    if (!indicator) return;
+
+    function reset () {
+      pulling = false; triggered = false; startY = 0; currentY = 0;
+      indicator.style.transform = 'translateX(-50%) translateY(-60px)';
+      indicator.style.opacity = '0';
+    }
+
+    document.addEventListener('touchstart', function (e) {
+      // Only engage when user is at the very top of the page
+      if (window.scrollY > 4) return;
+      // Don't fire when starting inside an input, modal, scrollable table, etc.
+      var t = e.target;
+      if (t.closest('input,textarea,select,.bottom-nav,.mobile-menu,.table-responsive,.js-plotly-plot')) return;
+      startY  = e.touches[0].clientY;
+      pulling = true;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function (e) {
+      if (!pulling) return;
+      currentY = e.touches[0].clientY;
+      var delta = currentY - startY;
+      if (delta <= 0) return;
+      var pull = Math.min(delta, THRESHOLD * 1.5);
+      indicator.style.transform = 'translateX(-50%) translateY(' + (pull - 60) + 'px) rotate(' + (pull * 4) + 'deg)';
+      indicator.style.opacity = Math.min(pull / THRESHOLD, 1);
+      if (pull >= THRESHOLD) triggered = true;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function () {
+      if (!pulling) return;
+      if (triggered) {
+        indicator.style.transform = 'translateX(-50%) translateY(20px)';
+        indicator.style.opacity = '1';
+        setTimeout(function () { window.location.reload(); }, 200);
+      } else {
+        reset();
+      }
+    });
+
+    reset();
+  })();
+})();
+</script>
 
 <!-- ── Chatbot Widget ─────────────────────────────────────────────── -->
 <div id="chatWidget" style="position:fixed;bottom:24px;right:24px;z-index:9999;font-family:'Inter',sans-serif">

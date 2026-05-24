@@ -1,0 +1,50 @@
+{
+  "name": "Fraud Shield AI — Sri Lanka",
+  "short_name": "Fraud Shield",
+  "description": "AI-powered banking fraud detection for Sri Lankan banks. Real-time monitoring across 6 fraud domains.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e1a",
+  "theme_color": "#1D9E75",
+  "lang": "en-LK",
+  "dir": "ltr",
+  "categories": ["finance", "security", "business"],
+  "icons": [
+    { "src": "/static/favicon.svg",                "sizes": "any",     "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/static/images/icon-72.png",         "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "/static/images/icon-96.png",         "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "/static/images/icon-128.png",        "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/static/images/icon-144.png",        "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/static/images/icon-152.png",        "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "/static/images/icon-192.png",        "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/images/icon-384.png",        "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/static/images/icon-512.png",        "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/images/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/static/images/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Live Monitor",
+      "short_name": "Monitor",
+      "description": "Real-time transaction monitoring",
+      "url": "/dashboard?tab=monitor",
+      "icons": [{ "src": "/static/images/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Alerts",
+      "short_name": "Alerts",
+      "description": "Recent fraud alerts",
+      "url": "/fraud/alerts",
+      "icons": [{ "src": "/static/images/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Banking Check",
+      "short_name": "Banking",
+      "description": "Check banking transaction",
+      "url": "/fraud/banking",
+      "icons": [{ "src": "/static/images/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
