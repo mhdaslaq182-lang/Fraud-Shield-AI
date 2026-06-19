@@ -1,9 +1,12 @@
 {% extends "fraud/_layout.html" %}
 {% block title %}Banking Fraud Detection{% endblock %}
 {% block fraud_content %}
-<div class="fraud-header">
-  <div class="fraud-title">Banking Fraud Detection</div>
-  <div class="fraud-sub">Credit Card Fraud · Money Laundering · Account Takeover</div>
+<div class="fraud-header" style="display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div class="fraud-title">Banking Fraud Detection</div>
+    <div class="fraud-sub">Credit Card Fraud · Money Laundering · Account Takeover</div>
+  </div>
+  <button type="button" class="btn-analyze" id="pdfBtn" onclick="generatePDF()" style="display:none;padding:10px 20px;background:linear-gradient(135deg, var(--accent), #0F6E56);border:1px solid rgba(29,158,117,0.3);color:white;border-radius:10px;font-weight:600;cursor:pointer;font-size:0.9rem;white-space:nowrap">📄 Download PDF</button>
 </div>
 
 <div class="input-grid">
@@ -95,6 +98,65 @@ function showResult(d) {
   g.style.width = pct + '%';
   g.style.background = `linear-gradient(90deg, #1D9E75, ${color})`;
   rc.scrollIntoView({behavior:'smooth', block:'nearest'});
+  
+  // Show PDF button
+  document.getElementById('pdfBtn').style.display = 'inline-block';
+  // Store current data for PDF generation
+  window.currentAnalysisData = d;
+  window.currentTransactionData = {
+    amount_lkr:    +document.getElementById('amount_lkr').value,
+    hour:          +document.getElementById('hour').value,
+    frequency:     +document.getElementById('frequency').value,
+    distance_km:   +document.getElementById('distance_km').value,
+    failed_logins: +document.getElementById('failed_logins').value,
+    new_device:    +document.getElementById('new_device').value,
+    account_age:   +document.getElementById('account_age').value,
+    countries:     +document.getElementById('countries').value,
+    velocity_24h:  +document.getElementById('velocity_24h').value,
+    email_risk:    +document.getElementById('email_risk').value,
+    balance_lkr:   +document.getElementById('balance_lkr').value,
+    is_weekend:    +document.getElementById('is_weekend').value,
+  };
+}
+
+async function generatePDF() {
+  if (!window.currentTransactionData || !window.currentAnalysisData) {
+    alert('Please analyze a transaction first');
+    return;
+  }
+  
+  const btn = document.getElementById('pdfBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Generating PDF...';
+  
+  try {
+    const payload = window.currentTransactionData;
+    const res = await fetch('/fraud/banking/pdf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    
+    if (!res.ok) {
+      throw new Error('PDF generation failed');
+    }
+    
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `banking_fraud_report_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+  } catch(e) {
+    alert('PDF generation failed: ' + e);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '📄 Download PDF Report';
+  }
 }
 </script>
 {% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Offline{% endblock %}
+{% block content %}
+<div style="min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px">
+    <div style="width:96px;height:96px;border-radius:24px;background:rgba(29,158,117,0.1);
+                display:flex;align-items:center;justify-content:center;margin-bottom:24px">
+        <span data-icon="wifioff" data-size="48" data-color="#1D9E75"></span>
+    </div>
+
+    <h1 style="font-size:1.6rem;margin:0 0 12px;font-weight:700">You're offline</h1>
+    <p style="color:var(--text-secondary);max-width:380px;margin:0 0 28px;line-height:1.5">
+        Fraud Shield AI needs an internet connection to check transactions in real-time. Pages you've already
+        visited will still load from cache.
+    </p>
+
+    <button type="button" onclick="window.location.reload()"
+            style="padding:12px 28px;background:var(--accent);color:#fff;border:none;border-radius:10px;
+                   font-weight:600;font-size:0.95rem;cursor:pointer;min-height:44px">
+        <span data-icon="reload" data-size="16"></span>&nbsp; Try Again
+    </button>
+
+    <p style="margin-top:20px;color:var(--text-secondary);font-size:0.8rem">
+        Status: <span id="netStatus" style="font-weight:600">checking…</span>
+    </p>
+</div>
+
+<script>
+(function () {
+  function updateStatus () {
+    var el = document.getElementById('netStatus');
+    if (navigator.onLine) {
+      el.textContent = 'Online — reloading…';
+      el.style.color = '#1D9E75';
+      setTimeout(function () { window.location.reload(); }, 800);
+    } else {
+      el.textContent = 'No connection';
+      el.style.color = '#dc2626';
+    }
+  }
+  window.addEventListener('online',  updateStatus);
+  window.addEventListener('offline', updateStatus);
+  updateStatus();
+})();
+</script>
+{% endblock %}

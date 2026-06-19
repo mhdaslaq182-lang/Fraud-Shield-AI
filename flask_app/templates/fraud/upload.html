@@ -1,9 +1,12 @@
 {% extends "fraud/_layout.html" %}
 {% block title %}Bank Data Upload{% endblock %}
 {% block fraud_content %}
-<div class="fraud-header">
-  <div class="fraud-title">Bank Data Upload &amp; Analysis</div>
-  <div class="fraud-sub">Upload real bank transaction data — AI analyzes and detects fraud instantly</div>
+<div class="fraud-header" style="display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div class="fraud-title">Bank Data Upload &amp; Analysis</div>
+    <div class="fraud-sub">Upload real bank transaction data — AI analyzes and detects fraud instantly</div>
+  </div>
+  <button type="button" id="pdfBtn" onclick="generatePDF()" style="display:none;padding:10px 20px;background:linear-gradient(135deg, var(--accent), #0F6E56);border:1px solid rgba(29,158,117,0.3);color:white;border-radius:10px;font-weight:600;cursor:pointer;font-size:0.9rem;white-space:nowrap">📄 Download PDF</button>
 </div>
 
 <div class="input-section" style="margin-bottom:20px">
@@ -66,6 +69,8 @@
 {% block extra_js %}
 <script>
 let selectedFile=null;
+let currentUploadResults = null;
+
 function fileSelected(input){selectedFile=input.files[0];if(selectedFile){document.getElementById('fileName').textContent=selectedFile.name+' ('+Math.round(selectedFile.size/1024)+'KB)';document.getElementById('analyzeBtn').disabled=false;}}
 function handleDrop(e){e.preventDefault();document.getElementById('dropZone').classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.name.endsWith('.csv')){selectedFile=f;document.getElementById('fileName').textContent=f.name;document.getElementById('analyzeBtn').disabled=false;}}
 async function analyze(){
@@ -75,6 +80,7 @@ async function analyze(){
   try{
     const res=await fetch('/fraud/upload/analyze',{method:'POST',body:form});
     const d=await res.json();if(d.error){alert('Error: '+d.error);return;}
+    currentUploadResults = d;
     const rc=document.getElementById('result');rc.classList.add('show');
     document.getElementById('summaryBar').innerHTML=`
       <div class="summary-stat"><div class="summary-num">${d.total}</div><div class="summary-lbl">Total</div></div>
@@ -89,10 +95,60 @@ async function analyze(){
       const csv='amount_lkr,bank,city,fraud_probability,risk_level,decision\n'+d.results.map(r=>`${r.amount_lkr},${r.bank},${r.city},${r.fraud_probability},${r.risk_level},${r.decision}`).join('\n');
       const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);
       const a=document.getElementById('downloadBtn');a.href=url;a.download='fraud_results.csv';
+      // Show PDF button
+      document.getElementById('pdfBtn').style.display='inline-block';
     }
     rc.scrollIntoView({behavior:'smooth',block:'nearest'});
   }catch(e){alert('Failed: '+e);}
   finally{btn.disabled=false;btn.innerHTML='Analyze with AI';}
+}
+
+async function generatePDF(){
+  if(!currentUploadResults || !currentUploadResults.results){
+    alert('No analysis results to export');
+    return;
+  }
+  
+  try{
+    // Convert results to transaction format for PDF
+    const transactions = currentUploadResults.results.map(r => ({
+      date: new Date().toISOString().slice(0,10),
+      amount: parseFloat(r.amount_lkr),
+      type: 'Banking',
+      risk: r.risk_level,
+      status: r.decision
+    }));
+    
+    const accountInfo = {
+      'Total Analyzed': currentUploadResults.total,
+      'Fraud Detected': currentUploadResults.fraud_count,
+      'Fraud Rate': currentUploadResults.fraud_rate,
+      'Analysis Date': new Date().toISOString().slice(0,10)
+    };
+    
+    const res=await fetch('/fraud/transaction-statement/pdf',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        transactions: transactions,
+        account_info: accountInfo
+      })
+    });
+    
+    if(!res.ok) throw new Error('PDF generation failed');
+    
+    const blob=await res.blob();
+    const url=window.URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`transaction_statement_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }catch(e){
+    alert('PDF generation failed: '+e);
+  }
 }
 </script>
 {% endblock %}

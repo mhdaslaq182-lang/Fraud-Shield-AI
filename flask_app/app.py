@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from api_routes import api
 from fraud_routes import fraud
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from database import db, User, LoginLog
+from database import db, User, LoginLog, PushSubscription
 from face_utils import register_face_from_image, verify_face_from_image, is_face_registered
 from datetime import datetime
 import os
@@ -19,9 +19,25 @@ if _env.exists():
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 app = Flask(__name__)
-app.config["SECRET_KEY"]        = "sl_fraud_detection_2026_cg02_g07"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///fraud_users.db"
+
+# ── Secrets & session config (read from environment) ──
+app.config["SECRET_KEY"] = os.environ.get(
+    "FLASK_SECRET_KEY",
+    "sl_fraud_detection_2026_cg02_g07"  # fallback for local dev only
+)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL", "sqlite:///fraud_users.db"
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# ── Hardened cookie flags ──
+_is_prod = os.environ.get("FLASK_ENV", "development").lower() == "production"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"]   = _is_prod   # require HTTPS in prod
+app.config["REMEMBER_COOKIE_HTTPONLY"] = True
+app.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
+app.config["REMEMBER_COOKIE_SECURE"]   = _is_prod
 
 db.init_app(app)
 app.register_blueprint(api)
@@ -50,6 +66,98 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("Default admin created: admin / admin123")
+
+
+# ══════════════════════════════════
+# PWA: Service Worker + Manifest at root scope
+# ══════════════════════════════════
+@app.route("/sw.js")
+def pwa_service_worker():
+    """Serve the service worker from root so its scope is the whole site."""
+    response = app.send_static_file("sw.js")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Content-Type"] = "application/javascript"
+    return response
+
+@app.route("/manifest.json")
+def pwa_manifest():
+    response = app.send_static_file("manifest.json")
+    response.headers["Content-Type"] = "application/manifest+json"
+    return response
+
+@app.route("/offline")
+def pwa_offline():
+    """Fallback page shown by the service worker when the network is unreachable."""
+    return render_template("offline.html")
+
+
+# ══════════════════════════════════
+# PWA: Web Push (subscribe / unsubscribe / public key / test)
+# ══════════════════════════════════
+@app.route("/api/push/public-key", methods=["GET"])
+def push_public_key():
+    """Return the server's VAPID public key — client uses it to call pushManager.subscribe()."""
+    return jsonify({"publicKey": os.environ.get("VAPID_PUBLIC_KEY", "")})
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+@login_required
+def push_subscribe():
+    """Save a PushSubscription returned by the browser's pushManager."""
+    sub = request.get_json(silent=True) or {}
+    endpoint = sub.get("endpoint")
+    keys     = sub.get("keys") or {}
+    p256dh, auth = keys.get("p256dh"), keys.get("auth")
+
+    if not endpoint or not p256dh or not auth:
+        return jsonify({"success": False, "message": "Invalid subscription"}), 400
+
+    existing = PushSubscription.query.filter_by(endpoint=endpoint).first()
+    if existing:
+        existing.user_id    = current_user.id
+        existing.p256dh     = p256dh
+        existing.auth       = auth
+        existing.user_agent = request.headers.get("User-Agent", "")[:300]
+        existing.failures   = 0
+    else:
+        existing = PushSubscription(
+            user_id    = current_user.id,
+            endpoint   = endpoint,
+            p256dh     = p256dh,
+            auth       = auth,
+            user_agent = request.headers.get("User-Agent", "")[:300],
+        )
+        db.session.add(existing)
+    db.session.commit()
+    return jsonify({"success": True, "id": existing.id})
+
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+@login_required
+def push_unsubscribe():
+    endpoint = (request.get_json(silent=True) or {}).get("endpoint")
+    if not endpoint:
+        return jsonify({"success": False}), 400
+    PushSubscription.query.filter_by(endpoint=endpoint).delete()
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@app.route("/api/push/test", methods=["POST"])
+@login_required
+def push_test():
+    """Send a test notification to the logged-in user's devices. Useful for the
+    'Send test notification' button on the profile page."""
+    from push_notify import broadcast_fraud_alert
+    result = broadcast_fraud_alert(
+        prob       = 0.92,
+        amount_lkr = 250000,
+        fraud_type = "Test Alert",
+        txn_id     = f"TEST-{int(datetime.utcnow().timestamp())}",
+        recipients = [current_user.id],
+    )
+    return jsonify({"success": True, **result})
 
 
 # ══════════════════════════════════

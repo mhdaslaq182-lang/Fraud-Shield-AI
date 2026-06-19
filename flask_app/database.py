@@ -36,3 +36,26 @@ class LoginLog(db.Model):
 
     def __repr__(self):
         return f"<Login {self.username} {self.status}>"
+
+
+class PushSubscription(db.Model):
+    """Stores a Web Push subscription returned by the browser.
+    One row per (user, device). `endpoint` is unique per browser/device."""
+    id          = db.Column(db.Integer,    primary_key=True)
+    user_id     = db.Column(db.Integer,    db.ForeignKey("user.id"), nullable=False)
+    endpoint    = db.Column(db.String(500), unique=True, nullable=False)
+    p256dh      = db.Column(db.String(200), nullable=False)
+    auth        = db.Column(db.String(100), nullable=False)
+    user_agent  = db.Column(db.String(300))
+    created_at  = db.Column(db.DateTime,   default=datetime.utcnow)
+    last_sent   = db.Column(db.DateTime,   nullable=True)
+    failures    = db.Column(db.Integer,    default=0)
+
+    def to_dict(self):
+        return {
+            "endpoint": self.endpoint,
+            "keys": {"p256dh": self.p256dh, "auth": self.auth},
+        }
+
+    def __repr__(self):
+        return f"<PushSub user={self.user_id} endpoint={self.endpoint[:32]}…>"

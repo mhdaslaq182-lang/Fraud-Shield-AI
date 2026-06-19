@@ -17,17 +17,30 @@ from groq import Groq
 
 api = Blueprint("api", __name__)
 
-# ── API Keys for each bank ──
-API_KEYS = {
-    "BOC-2026-FRAUDSHIELD":      "Bank of Ceylon",
-    "PEOPLES-2026-FRAUDSHIELD":  "Peoples Bank",
-    "SAMPATH-2026-FRAUDSHIELD":  "Sampath Bank",
-    "HNB-2026-FRAUDSHIELD":      "Hatton National Bank",
-    "COMMERCIAL-2026-FRAUDSHIELD":"Commercial Bank",
-    "NSB-2026-FRAUDSHIELD":      "National Savings Bank",
-    "SEYLAN-2026-FRAUDSHIELD":   "Seylan Bank",
-    "NTB-2026-FRAUDSHIELD":      "Nations Trust Bank",
-}
+# ── API Keys for each bank ─────────────────────────────────────────
+# Loaded from BANK_API_KEYS env var, formatted "KEY1:Bank Name 1,KEY2:Bank Name 2".
+# Falls back to a hardcoded dev set if the env var is missing.
+def _load_api_keys():
+    raw = os.environ.get("BANK_API_KEYS", "").strip()
+    if not raw:
+        return {
+            "BOC-2026-FRAUDSHIELD":       "Bank of Ceylon",
+            "PEOPLES-2026-FRAUDSHIELD":   "Peoples Bank",
+            "SAMPATH-2026-FRAUDSHIELD":   "Sampath Bank",
+            "HNB-2026-FRAUDSHIELD":       "Hatton National Bank",
+            "COMMERCIAL-2026-FRAUDSHIELD":"Commercial Bank",
+            "NSB-2026-FRAUDSHIELD":       "National Savings Bank",
+            "SEYLAN-2026-FRAUDSHIELD":    "Seylan Bank",
+            "NTB-2026-FRAUDSHIELD":       "Nations Trust Bank",
+        }
+    out = {}
+    for pair in raw.split(","):
+        if ":" in pair:
+            k, v = pair.split(":", 1)
+            out[k.strip()] = v.strip()
+    return out
+
+API_KEYS = _load_api_keys()
 
 # ── Load Model ──
 def get_model():

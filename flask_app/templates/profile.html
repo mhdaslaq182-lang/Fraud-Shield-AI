@@ -68,6 +68,36 @@
         </button>
         </div>
     </div>
+
+    <!-- ── Push Notifications Card ─────────────────────────────────── -->
+    <div class="glass-card" style="grid-column: 1 / -1;">
+        <div class="card-header-cyber">
+            <span data-icon="bell" data-size="18" data-color="#1D9E75"></span> &nbsp; PUSH NOTIFICATIONS
+        </div>
+        <div style="padding:25px">
+            <div id="pushStatus" class="alert" style="background:rgba(29,158,117,0.08);border-color:rgba(29,158,117,0.3);color:var(--text-secondary)">
+                <span data-icon="info" data-size="16" data-color="#1D9E75"></span> &nbsp;
+                <span id="pushStatusText">Checking notification status...</span>
+            </div>
+
+            <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px">
+                Enable push notifications to receive real-time fraud alerts on this device, even when the app is closed.
+                Works best when you've installed the app to your home screen.
+            </p>
+
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <button type="button" id="pushEnableBtn" onclick="enablePush()" class="btn btn-cyber" style="display:none">
+                    <span data-icon="bell" data-size="16"></span> &nbsp; ENABLE NOTIFICATIONS
+                </button>
+                <button type="button" id="pushDisableBtn" onclick="disablePush()" class="btn btn-outline-cyber" style="display:none">
+                    <span data-icon="bell" data-size="16"></span> &nbsp; DISABLE NOTIFICATIONS
+                </button>
+                <button type="button" id="pushTestBtn" onclick="sendTestPush()" class="btn btn-outline-cyber" style="display:none">
+                    <span data-icon="alert" data-size="16"></span> &nbsp; SEND TEST ALERT
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 {% block extra_js %}
@@ -142,5 +172,112 @@ function doRegister() {
         sb.style.color = 'var(--danger)';
     });
 }
+
+// ══════════════════════════════════════════════════════════════
+// Web Push subscribe / unsubscribe / test
+// ══════════════════════════════════════════════════════════════
+(function () {
+  const statusEl   = document.getElementById('pushStatusText');
+  const enableBtn  = document.getElementById('pushEnableBtn');
+  const disableBtn = document.getElementById('pushDisableBtn');
+  const testBtn    = document.getElementById('pushTestBtn');
+
+  function setStatus(text, danger) {
+    statusEl.textContent = text;
+    statusEl.parentElement.style.color = danger ? 'var(--danger, #dc2626)' : 'var(--text-secondary)';
+  }
+
+  function urlBase64ToUint8Array(b64) {
+    const pad = '='.repeat((4 - b64.length % 4) % 4);
+    const base64 = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    const arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; ++i) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+
+  async function getSubscription() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+    const reg = await navigator.serviceWorker.ready;
+    return reg.pushManager.getSubscription();
+  }
+
+  async function refreshUI() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setStatus('Push notifications not supported by this browser.', true);
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      setStatus('Notifications are blocked. Enable them in browser settings.', true);
+      enableBtn.style.display = 'inline-flex';
+      enableBtn.disabled = true;
+      return;
+    }
+    const sub = await getSubscription();
+    if (sub) {
+      setStatus('Notifications enabled on this device ✓');
+      disableBtn.style.display = 'inline-flex';
+      testBtn.style.display    = 'inline-flex';
+      enableBtn.style.display  = 'none';
+    } else {
+      setStatus('Notifications are not enabled on this device.');
+      enableBtn.style.display  = 'inline-flex';
+      disableBtn.style.display = 'none';
+      testBtn.style.display    = 'none';
+    }
+  }
+
+  window.enablePush = async function () {
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { setStatus('Permission denied.', true); return; }
+
+      const keyResp = await fetch('/api/push/public-key');
+      const { publicKey } = await keyResp.json();
+      if (!publicKey) { setStatus('Server VAPID key missing.', true); return; }
+
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+
+      const r = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sub),
+      });
+      const data = await r.json();
+      if (data.success) { setStatus('Notifications enabled ✓'); refreshUI(); }
+      else              { setStatus('Failed to save subscription on server.', true); }
+    } catch (e) {
+      console.error(e);
+      setStatus('Could not enable: ' + (e.message || e), true);
+    }
+  };
+
+  window.disablePush = async function () {
+    const sub = await getSubscription();
+    if (!sub) { refreshUI(); return; }
+    await fetch('/api/push/unsubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: sub.endpoint }),
+    });
+    await sub.unsubscribe();
+    setStatus('Notifications disabled.');
+    refreshUI();
+  };
+
+  window.sendTestPush = async function () {
+    testBtn.disabled = true;
+    const r = await fetch('/api/push/test', { method: 'POST' });
+    const data = await r.json();
+    setStatus(`Test sent: ${data.sent} delivered, ${data.failed} failed, ${data.expired_deleted} expired.`);
+    testBtn.disabled = false;
+  };
+
+  refreshUI();
+})();
 </script>
 {% endblock %}
