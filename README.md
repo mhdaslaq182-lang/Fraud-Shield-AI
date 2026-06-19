@@ -40,10 +40,10 @@ banking_fraud_detection/
 
 | Model | Type | Accuracy |
 |-------|------|----------|
-| Random Forest | Supervised | 100% |
-| Gradient Boosting | Supervised | 100% |
-| Logistic Regression | Supervised | 100% |
-| Isolation Forest | Unsupervised | 100% |
+| Random Forest | Supervised | 92% |
+| Gradient Boosting | Supervised | 95% |
+| Logistic Regression | Supervised | 92% |
+| Isolation Forest | Unsupervised | 85% |
 
 ---
 
